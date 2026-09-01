@@ -194,9 +194,38 @@
   .panel .avatar { width: 44px; height: 44px; }
 
   footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 10px 20px 30px; }
+
+  /* -------- puerta (login con la cuenta de hub.fibot.ar) -------- */
+  body.cerrado > header, body.cerrado > .escena, body.cerrado > footer { display: none; }
+  .puerta { position: fixed; inset: 0; background: var(--cream); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .puerta.oculta { display: none; }
+  .puerta .tarjeta { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 26px 28px; width: 100%; max-width: 360px; }
+  .puerta h1 { font-family: "VT323", monospace; font-size: 2rem; letter-spacing: 1px; margin: 0 0 2px; color: var(--green); }
+  .puerta .sub { margin: 0 0 16px; color: var(--muted); font-size: .88rem; }
+  .puerta label { display: block; font-size: .82rem; color: var(--muted); margin: 10px 0 4px; }
+  .puerta input { width: 100%; padding: 9px 10px; border: 1px solid var(--rule); border-radius: 6px; font-size: 1rem; font-family: inherit; }
+  .puerta .btn { width: 100%; margin-top: 16px; padding: 11px; font-size: .95rem; }
+  .puerta .error { display: none; background: #fbeee4; color: #c1652f; padding: 8px 12px; border-radius: 6px; margin-top: 12px; font-size: .88rem; }
+  .puerta .error.visible { display: block; }
+  .puerta .cargando { color: var(--muted); font-size: .88rem; text-align: center; }
 </style>
 </head>
-<body>
+<body class="cerrado">
+<div class="puerta" id="puerta">
+  <div class="tarjeta">
+    <h1>Oficina FiBOT</h1>
+    <p class="sub">Entrá con tu cuenta de hub.fibot.ar.</p>
+    <p class="cargando" id="puerta-cargando">Revisando la sesión…</p>
+    <form id="form-puerta" style="display:none;">
+      <label for="puerta-mail">Mail</label>
+      <input type="email" id="puerta-mail" name="mail" autocomplete="username" required>
+      <label for="puerta-clave">Clave</label>
+      <input type="password" id="puerta-clave" name="clave" autocomplete="current-password" required>
+      <button class="btn" type="submit" id="puerta-entrar">Entrar</button>
+      <div class="error" id="puerta-error"></div>
+    </form>
+  </div>
+</div>
 <header>
   <div class="cabecera-textos">
     <h1>Oficina FiBOT</h1>
@@ -210,6 +239,7 @@
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
     <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
     <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
+    <button class="btn secundario" id="btn-salir" title="Cerrar sesión">Salir</button>
   </div>
 </header>
 
@@ -245,6 +275,146 @@
 </div>
 
 <script>
+// ---------- puerta: login con la cuenta de hub.fibot.ar (Supabase Auth), y entra UNA sola persona ----------
+// Sin librería: el login por clave de Supabase es una llamada REST. Mismo proyecto
+// y misma clave pública que usa hub.fibot.ar (viaja en el build de cantapp, es
+// pública por diseño). Lo que restringe es que sólo existen las cuentas creadas a
+// mano en ese proyecto — y acá, además, sólo pasa el dueño.
+//
+// OJO, honestidad: esto es una cortina, no una pared. El sitio es estático en
+// GitHub Pages: agents.json / layout.json / avatares.json se pueden bajar directo
+// aunque nunca se pase por acá. Sirve para que la oficina no quede abierta a
+// cualquiera que tenga el link; no sirve para guardar nada sensible. Ver CLAUDE.md.
+const AUTH = {
+  url: "https://xqxqsdbftngjqibxfeca.supabase.co",
+  apikey: "sb_publishable_C7Krw4eCyp_-lXaoZwKVqg_aIImvcWk",
+  claveSesion: "fibot-oficina-sesion",
+  // sha256 del mail del dueño, en minúsculas. Hash y no texto plano para no dejar
+  // el mail escrito en un repo público — no es un secreto, es pudor.
+  duenoSha256: "98f93c6523020b7988e30fc1bee4f979535e1d99ccd61c322032e117a0fd52cc",
+};
+
+async function sha256Hex(texto) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function authFetch(path, opciones = {}) {
+  const headers = { apikey: AUTH.apikey, "Content-Type": "application/json", ...(opciones.headers || {}) };
+  return fetch(AUTH.url + path, { ...opciones, headers });
+}
+
+function leerSesion() {
+  try { return JSON.parse(localStorage.getItem(AUTH.claveSesion)) || null; } catch (e) { return null; }
+}
+function guardarSesion(s) { localStorage.setItem(AUTH.claveSesion, JSON.stringify(s)); }
+function borrarSesion() { localStorage.removeItem(AUTH.claveSesion); }
+
+function sesionDesdeRespuesta(data) {
+  const ahora = Math.floor(Date.now() / 1000);
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: data.expires_at || (ahora + (data.expires_in || 3600)),
+    email: (data.user && data.user.email || "").toLowerCase(),
+  };
+}
+
+async function esDueno(email) {
+  if (!email) return false;
+  return (await sha256Hex(email.toLowerCase())) === AUTH.duenoSha256;
+}
+
+async function cerrarSesionRemota(token) {
+  try { await authFetch("/auth/v1/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch (e) { /* best effort */ }
+}
+
+// Devuelve la sesión válida del dueño, o null (y limpia lo que haya) si no hay.
+async function validarSesion() {
+  let s = leerSesion();
+  if (!s || !s.access_token) return null;
+  const ahora = Math.floor(Date.now() / 1000);
+  if (s.expires_at - 60 < ahora) {
+    try {
+      const r = await authFetch("/auth/v1/token?grant_type=refresh_token", {
+        method: "POST", body: JSON.stringify({ refresh_token: s.refresh_token }),
+      });
+      if (!r.ok) throw new Error("refresh falló");
+      s = sesionDesdeRespuesta(await r.json());
+      guardarSesion(s);
+    } catch (e) {
+      borrarSesion();
+      return null;
+    }
+  }
+  try {
+    const r = await authFetch("/auth/v1/user", { headers: { Authorization: "Bearer " + s.access_token } });
+    if (!r.ok) throw new Error("token inválido");
+    const u = await r.json();
+    if (!(await esDueno(u.email))) { await cerrarSesionRemota(s.access_token); borrarSesion(); return null; }
+    return s;
+  } catch (e) {
+    borrarSesion();
+    return null;
+  }
+}
+
+async function ingresar(email, clave) {
+  const r = await authFetch("/auth/v1/token?grant_type=password", {
+    method: "POST", body: JSON.stringify({ email: email.trim().toLowerCase(), password: clave }),
+  });
+  if (r.status === 400 || r.status === 401) throw new Error("Mail o clave incorrectos.");
+  if (!r.ok) throw new Error("No se pudo hablar con el login (" + r.status + "). Probá de nuevo en un rato.");
+  const s = sesionDesdeRespuesta(await r.json());
+  if (!(await esDueno(s.email))) {
+    await cerrarSesionRemota(s.access_token);
+    throw new Error("Esta oficina es solo de Nacho.");
+  }
+  guardarSesion(s);
+  return s;
+}
+
+async function salir() {
+  const s = leerSesion();
+  if (s && s.access_token) await cerrarSesionRemota(s.access_token);
+  borrarSesion();
+  location.reload();
+}
+
+let oficinaIniciada = false;
+async function mostrarOficina() {
+  document.getElementById("puerta").classList.add("oculta");
+  document.body.classList.remove("cerrado");
+  if (!oficinaIniciada) { oficinaIniciada = true; await iniciar(); }
+}
+
+function mostrarPuerta() {
+  document.getElementById("puerta-cargando").style.display = "none";
+  document.getElementById("form-puerta").style.display = "block";
+  document.getElementById("puerta-mail").focus();
+}
+
+document.getElementById("form-puerta").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = document.getElementById("puerta-entrar");
+  const error = document.getElementById("puerta-error");
+  error.classList.remove("visible");
+  boton.disabled = true;
+  boton.textContent = "Entrando…";
+  try {
+    await ingresar(document.getElementById("puerta-mail").value, document.getElementById("puerta-clave").value);
+    await mostrarOficina();
+  } catch (err) {
+    error.textContent = err.message;
+    error.classList.add("visible");
+    document.getElementById("puerta-clave").value = "";
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Entrar";
+  }
+});
+document.getElementById("btn-salir").addEventListener("click", salir);
+
 const CLAVE_LOCAL = "fibot-oficina-layout-v1";
 
 const PALETA = [
@@ -753,7 +923,9 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- arranque ----------
 
-(async function iniciar() {
+// La oficina (y sus fetch de agents/layout/avatares) recién arranca cuando la
+// puerta dejó pasar — ver mostrarOficina(). Antes de eso no se carga nada.
+async function iniciar() {
   try {
     AGENTES = await cargarAgentes();
   } catch (e) {
@@ -774,6 +946,12 @@ document.addEventListener("keydown", (e) => {
   }
   actualizarPie();
   render();
+}
+
+(async function arranque() {
+  const sesion = await validarSesion();
+  if (sesion) await mostrarOficina();
+  else mostrarPuerta();
 })();
 </script>
 </body>
