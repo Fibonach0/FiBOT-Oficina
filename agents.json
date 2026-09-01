@@ -1,0 +1,45 @@
+{
+  "_readme": "Roster de la oficina. Cada agente es una línea de trabajo real de Nacho, no un proceso corriendo 24/7 — ver CLAUDE.md sobre esa distinción. 'estado' es libre (activo/pausa/bloqueado); 'nota' se actualiza a mano por ahora.",
+  "agentes": [
+    {
+      "id": "prospeccion",
+      "nombre": "Prospección",
+      "rol": "Busca transportistas y rubros chicos, manda el primer mail frío y los seguimientos de 7/15 días",
+      "color": "#e0793c",
+      "estado": "activo",
+      "nota": "Corre sola cada 3hs vía GitHub Actions — ~30 prospectos contactados hasta ahora, sin humano en el loop salvo los WhatsApp pendientes.",
+      "link": "https://github.com/Fibonach0/Personal-FiBOT",
+      "link_label": "Ver repo"
+    },
+    {
+      "id": "consultorio",
+      "nombre": "FiBOT Consultorio",
+      "rol": "Arma la plataforma multi-tenant de turnos por WhatsApp para profesionales (psicólogos, odontólogos…)",
+      "color": "#2f5233",
+      "estado": "activo",
+      "nota": "MVP + página pública de reserva por slug ya mergeados. Falta cargar Meta WhatsApp y la key de Supabase para el primer tenant real.",
+      "link": "https://github.com/Fibonach0/FiBOT-Consultorio",
+      "link_label": "Ver repo"
+    },
+    {
+      "id": "farmacia",
+      "nombre": "FiBOT-Farmacia",
+      "rol": "Bot de WhatsApp + panel para las 4 farmacias piloto de la familia",
+      "color": "#c1652f",
+      "estado": "activo",
+      "nota": "LIVE en WhatsApp. Catálogo ~10k/11.5k productos, pendiente endurecer permisos de Supabase (anon puede escribir de más).",
+      "link": "https://github.com/Fibonach0/fibot-farmacia",
+      "link_label": "Ver repo"
+    },
+    {
+      "id": "personal-fibot",
+      "nombre": "Personal-FiBOT",
+      "rol": "El asistente de Telegram/WhatsApp de Nacho — domótica, banco, compras, memoria, co-admin",
+      "color": "#5b584f",
+      "estado": "activo",
+      "nota": "En evolución constante — última ronda grande sumó co-admin, llamadas telefónicas y archivos del mini-server.",
+      "link": "https://github.com/Fibonach0/Personal-FiBOT",
+      "link_label": "Ver repo"
+    }
+  ]
+}
