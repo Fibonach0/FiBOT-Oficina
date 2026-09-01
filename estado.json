@@ -59,5 +59,19 @@
       "pregunta": null,
       "actualizado": "2026-08-20T12:00:00Z"
     }
+  },
+  "tareas_mes": {
+    "prospeccion": 7,
+    "consultorio": 3,
+    "farmacia": 1,
+    "personal-fibot": 4,
+    "flotabot": 2
+  },
+  "agente_del_mes": {
+    "id": "prospeccion",
+    "nombre": "Prospección",
+    "tareas": 11,
+    "mes": "2026-08",
+    "provisional": false
   }
 }
