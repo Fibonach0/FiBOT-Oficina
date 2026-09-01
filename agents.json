@@ -1,6 +1,17 @@
 {
-  "_readme": "Roster de la oficina. Cada agente es una línea de trabajo real de Nacho, no un proceso corriendo 24/7 — ver CLAUDE.md sobre esa distinción. 'estado' es libre (activo/pausa/bloqueado); 'nota' se actualiza a mano. 'repo' (opcional, 'owner/nombre') sólo va en repos PÚBLICOS: habilita el commit más reciente en vivo en el panel de detalle vía la API pública de GitHub. Nunca ponerlo en un repo privado — un fetch sin auth desde el navegador de cualquiera le pegaría un 404, y si algún día hiciera falta autenticarlo NO va un token acá (este archivo lo sirve un sitio público).",
+  "_readme": "Roster de la oficina. Cada agente es una línea de trabajo real de Nacho, no un proceso corriendo 24/7 — ver CLAUDE.md sobre esa distinción. 'estado' es libre (activo/pausa/bloqueado); 'nota' se actualiza a mano. 'repo' (opcional, 'owner/nombre') sólo va en repos PÚBLICOS: habilita el commit más reciente en vivo en el panel de detalle vía la API pública de GitHub. Nunca ponerlo en un repo privado — un fetch sin auth desde el navegador de cualquiera le pegaría un 404, y si algún día hiciera falta autenticarlo NO va un token acá (este archivo lo sirve un sitio público). 'gerente': true marca al único agente que recibe pedidos y los delega (FiBOT). El estado VIVO de cada uno (tarea, si espera algo del dueño) no vive acá sino en estado.json / el endpoint de FiBOT — 'estado' y 'nota' acá son el fallback estático.",
   "agentes": [
+    {
+      "id": "fibot",
+      "nombre": "FiBOT",
+      "gerente": true,
+      "rol": "Gerente — recibe tus pedidos y decide qué asistente los agarra",
+      "color": "#2f5233",
+      "estado": "activo",
+      "nota": "Es tu bot de Telegram/WhatsApp (Personal-FiBOT). Le pedís algo acá y él reparte: clientes → Prospección, algo de Cantarini → FlotaBot, turnos → Consultorio.",
+      "link": "https://github.com/Fibonach0/Personal-FiBOT",
+      "link_label": "repo"
+    },
     {
       "id": "prospeccion",
       "nombre": "Prospección",

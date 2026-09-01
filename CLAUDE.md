@@ -48,6 +48,58 @@ de verdad): ese puente de mensajería es un proyecto aparte, con su propio
 backend con estado y credenciales — no una extensión de este sitio estático.
 Ver conversación de origen para el detalle de por qué se separó en dos fases.
 
+Ese backend ya tiene dueño: **es Personal-FiBOT**. La oficina no habla con
+los agentes, habla con FiBOT, y FiBOT es el gerente — ver la sección "FiBOT
+gerente + estado vivo".
+
+## FiBOT gerente + estado vivo (Etapa 1 hecha; la 2 vive en Personal-FiBOT)
+
+Lo que Nacho quiere ver de cada escritorio no es "abrir el repo" sino **en
+qué tarea está, si está esperando algo de él, y poder contestarle o pedirle
+algo**. Y un solo lugar donde pedir: **FiBOT es el gerente** (`gerente: true`
+en `agents.json`, único) — recibe el pedido y decide qué asistente lo agarra
+("necesito clientes" → Prospección; "TC dice que el 500 no reporta" →
+FlotaBot). El botón **Pedirle a FiBOT** del header abre su panel directo.
+
+### El contrato
+
+```json
+{ "generado": "ISO",
+  "agentes": { "<id>": {
+      "estado": "en_curso | esperando_dueno | pendiente | hecha | inactivo",
+      "tarea": "una línea", "detalle": "opcional",
+      "pregunta": "sólo con esperando_dueno",
+      "actualizado": "ISO — cuándo reportó el agente",
+      "link": "opcional: PR, corrida, lo que sea" } } }
+```
+
+Hoy (`OFICINA_API = ""` en `index.html`) se lee **`estado.json`**, que es una
+muestra estática y no cambia sola. Con `OFICINA_API` apuntando a
+Personal-FiBOT, la oficina pide `GET {api}/oficina/estado` cada minuto y
+manda pedidos a `POST {api}/oficina/pedir` `{para, texto}`, en ambos casos
+con el `access_token` de Supabase de la puerta como `Bearer`. **La
+autorización real va del lado de FiBOT**: verifica ese token contra
+`/auth/v1/user` de Supabase y compara el mail con el del dueño — la puerta
+de acá sigue siendo una cortina (ver "La puerta").
+
+Lo que hace el front con eso:
+
+- `estadoDe(obj)` prefiere el estado vivo y cae a `agente.estado` de
+  `agents.json` si el agente no reportó nunca — por eso `estado`/`nota`
+  siguen existiendo ahí como fallback.
+- `esperando_dueno` pinta una **burbuja "te pregunta algo"** sobre el
+  escritorio y en el panel muestra la pregunta en una caja con el textarea
+  en modo "Contestale…".
+- Con `OFICINA_API` vacío el botón Enviar queda deshabilitado con la nota
+  "Etapa 2: por ahora, por Telegram", y el submit forzado devuelve el mismo
+  mensaje en vez de un fetch a `""`.
+- El link al repo quedó chiquito abajo del panel: dejó de ser lo principal.
+
+`estado.json` es una muestra a propósito realista (pregunta real del
+Consultorio sobre credenciales pendientes) para que el panel se pueda
+probar sin backend. Cuando la Etapa 2 esté conectada, el archivo puede
+quedar como fallback si la API no responde, o borrarse.
+
 ## Arquitectura
 
 ```
@@ -195,17 +247,17 @@ del ecosistema con nombre "genérico" resultaron privados pese a las
 apariencias, así que no asumir, comprobar.
 
 Para lo que no es un repo público (Personal-FiBOT, jarvis, o algo que ni
-vive en GitHub como el tracker de la rutina de prospección), sigue siendo
-`nota` a mano — ver la sección de abajo para el camino a futuro si se
-quiere automatizar eso también.
+vive en GitHub como el tracker de la rutina de prospección), el camino es el
+estado vivo que reporta FiBOT (`GET /oficina/estado`, Etapa 2), no un token
+acá. Mientras tanto queda `nota` a mano.
 
 ## Estado de los datos que siguen siendo a mano
 
-Fuera de los repos públicos, `agents.json` se edita a mano. Caminos reales
-para cuando se quiera automatizar el resto: una GitHub Action programada
-que escriba un `agents.json`/`layout.json` actualizado (puede leer repos
-privados con un token que vive como secret de Action, nunca en el cliente),
-o un endpoint chico. Nada de esto lo puede hacer el sitio estático solo.
+`agents.json` (roster, rol, color, link) se edita a mano y está bien que
+así sea: cambia cuando aparece o muere una línea de trabajo, no todos los
+días. Lo que cambia todos los días (tarea, pregunta, cuándo reportó) va por
+el contrato de estado vivo, y lo escribe FiBOT desde su Postgres — nunca
+una Action que commitee JSON acá, que era el plan viejo.
 
 ## La puerta — login con la cuenta de hub.fibot.ar, y entra una sola persona
 

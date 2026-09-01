@@ -181,6 +181,15 @@
   .estado-activo .mueble::after { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
   .estado-pausa .mueble::after { background: #d8b23a; }
   .estado-bloqueado .mueble::after { background: var(--orange); }
+  /* estado vivo (estado.json / FiBOT) */
+  .estado-en_curso .mueble::after { background: #4caf50; box-shadow: 0 0 6px #4caf50; animation: latir 1.6s ease-in-out infinite; }
+  .estado-esperando_dueno .mueble::after { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .estado-pendiente .mueble::after { background: #d8b23a; }
+  .estado-hecha .mueble::after { background: #4caf50; }
+  .estado-inactivo .mueble::after { background: #b5ae9f; }
+  @keyframes latir { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .mueble.gerente { background: linear-gradient(180deg, #4f8455, var(--green)); border-color: var(--green-dark); box-shadow: 0 4px 0 var(--green-dark); }
+  .burbuja { position: absolute; top: 4px; right: 6px; background: var(--orange); color: #fff; font-size: .66rem; font-weight: 700; padding: 3px 7px; border-radius: 10px 10px 10px 2px; box-shadow: 0 2px 4px rgba(0,0,0,.2); z-index: 2; animation: respirar 3.4s ease-in-out infinite; }
 
   .etiqueta { font-weight: 800; font-size: .78rem; margin-top: 4px; text-align: center; white-space: nowrap; }
   .etiqueta.vacio { color: var(--muted); font-weight: 600; }
@@ -222,6 +231,22 @@
   .panel a.btn { display: inline-block; margin-top: 16px; text-decoration: none; }
   .cerrar { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted); }
   .panel .avatar { width: 44px; height: 44px; }
+  .estado-linea { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
+  .badge { font-size: .74rem; font-weight: 700; padding: 3px 9px; border-radius: 10px; background: #e8e3d6; color: var(--muted); }
+  .badge-en_curso { background: #e3f1e4; color: #2e6b35; }
+  .badge-esperando_dueno { background: #fbe4d4; color: #b4521e; }
+  .badge-pendiente { background: #f6efd2; color: #8a6d0a; }
+  .badge-hecha { background: #e3f1e4; color: #2e6b35; }
+  .actualizado { font-size: .76rem; color: var(--muted); }
+  .tarea { font-weight: 700; line-height: 1.35; }
+  .detalle { color: var(--muted); font-size: .9rem; line-height: 1.4; margin-top: 4px; }
+  .pregunta { display: none; margin-top: 12px; background: #fbeee4; border-left: 4px solid var(--orange); padding: 10px 12px; border-radius: 6px; font-size: .92rem; line-height: 1.4; }
+  .pedido { margin-top: 14px; }
+  .pedido textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--rule); border-radius: 6px; font-family: inherit; font-size: .95rem; resize: vertical; }
+  .pedido-pie { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .pedido-nota { font-size: .78rem; color: var(--muted); }
+  .panel .nota { font-size: .84rem; color: var(--muted); margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--rule); }
+  .link-chico { display: inline-block; margin-top: 8px; font-size: .8rem; color: var(--muted); }
 
   footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 10px 20px 30px; }
 
@@ -262,6 +287,7 @@
     <p id="subtitulo">Panel personal — en qué anda cada frente, de un vistazo.</p>
   </div>
   <div class="barra-acciones">
+    <button class="btn" id="btn-fibot">Pedirle a FiBOT</button>
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
     <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
     <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
@@ -305,10 +331,23 @@
     <div id="panel-avatar-wrap"></div>
     <h2 id="panel-nombre"></h2>
     <p class="rol" id="panel-rol"></p>
+    <div class="solo-agente" id="panel-vivo">
+      <div class="estado-linea"><span class="badge" id="panel-badge"></span><span class="actualizado" id="panel-actualizado"></span></div>
+      <div class="tarea" id="panel-tarea"></div>
+      <div class="detalle" id="panel-detalle"></div>
+      <div class="pregunta" id="panel-pregunta"></div>
+    </div>
+    <div id="panel-extra"></div>
+    <form class="pedido solo-agente" id="form-pedido">
+      <textarea id="pedido-texto" rows="2" placeholder="Decile algo…"></textarea>
+      <div class="pedido-pie">
+        <button class="btn" type="submit" id="pedido-enviar">Enviar</button>
+        <span class="pedido-nota" id="pedido-nota"></span>
+      </div>
+    </form>
     <p class="nota" id="panel-nota"></p>
     <p class="commit" id="panel-commit" style="display:none;"></p>
-    <div id="panel-extra"></div>
-    <a class="btn" id="panel-link" target="_blank" rel="noopener"></a>
+    <a class="link-chico" id="panel-link" target="_blank" rel="noopener"></a>
   </div>
 </div>
 
@@ -716,6 +755,65 @@ function avatarParaAgente(agente) {
   return svg ? idsUnicos(svg) : avatarSVG(agente.color);
 }
 
+// ---------- estado vivo y pedidos: el contrato con FiBOT (gerente) ----------
+// OFICINA_API vacío = Etapa 1: se lee estado.json (muestra estática) y no se
+// puede pedir nada. Con OFICINA_API apuntando a Personal-FiBOT (Etapa 2):
+//   GET  {api}/oficina/estado         -> mismo JSON que estado.json
+//   POST {api}/oficina/pedir {para, texto} -> {ok, respuesta?}
+// Ambos con Authorization: Bearer <access_token de la puerta> — FiBOT lo
+// verifica contra Supabase y chequea que sea el dueño. Cero secretos acá.
+const OFICINA_API = "";
+const ESTADO_CADA_MS = 60000;
+let ESTADO = null;
+
+const ESTADOS_VIVOS = {
+  en_curso: { texto: "En curso", clase: "en_curso" },
+  esperando_dueno: { texto: "Esperando algo de vos", clase: "esperando_dueno" },
+  pendiente: { texto: "Pendiente", clase: "pendiente" },
+  hecha: { texto: "Hecha", clase: "hecha" },
+  inactivo: { texto: "Sin actividad", clase: "inactivo" },
+};
+
+function estadoVivoDe(agenteId) {
+  return (ESTADO && ESTADO.agentes && ESTADO.agentes[agenteId]) || null;
+}
+
+async function cargarEstado() {
+  try {
+    if (OFICINA_API) {
+      const s = leerSesion();
+      const r = await fetch(OFICINA_API + "/oficina/estado", { headers: { Authorization: "Bearer " + (s ? s.access_token : "") } });
+      if (!r.ok) throw new Error("estado " + r.status);
+      return await r.json();
+    }
+    const r = await fetch("estado.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("sin estado.json");
+    return await r.json();
+  } catch (e) {
+    return null; // sin estado vivo la oficina sigue con el estado estático de agents.json
+  }
+}
+
+function programarEstado() {
+  if (!OFICINA_API) return; // la muestra estática no cambia sola
+  setInterval(async () => {
+    const nuevo = await cargarEstado();
+    if (nuevo) { ESTADO = nuevo; render(); }
+  }, ESTADO_CADA_MS);
+}
+
+async function pedir(para, texto) {
+  if (!OFICINA_API) throw new Error("Todavía no está conectado a FiBOT — es la Etapa 2. Por ahora pedíselo por Telegram.");
+  const s = leerSesion();
+  const r = await fetch(OFICINA_API + "/oficina/pedir", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + (s ? s.access_token : "") },
+    body: JSON.stringify({ para, texto }),
+  });
+  if (!r.ok) throw new Error("FiBOT no pudo tomar el pedido (" + r.status + ").");
+  return await r.json();
+}
+
 // ---------- carga de datos ----------
 
 async function cargarAgentes() {
@@ -880,10 +978,13 @@ function elementoDe(obj) {
   const giro = `style="transform: rotate(${obj.rot || 0}deg)"`;
   if (obj.tipo === "escritorio") {
     const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+    const vivo = agente ? estadoVivoDe(agente.id) : null;
+    const burbuja = vivo && vivo.estado === "esperando_dueno" ? `<div class="burbuja" title="${(vivo.pregunta || "").replace(/"/g, "&quot;")}">te pregunta algo</div>` : "";
     el.innerHTML = `
+      ${burbuja}
       <div class="cuerpo" ${giro}>
         <div class="avatar-wrap">${agente ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
-        <div class="mueble${agente ? "" : " vacio"}"></div>
+        <div class="mueble${agente ? "" : " vacio"}${agente && agente.gerente ? " gerente" : ""}"></div>
       </div>
       <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
     `;
@@ -915,7 +1016,9 @@ function elementoDe(obj) {
 
 function estadoDe(obj) {
   const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
-  return agente ? agente.estado : null;
+  if (!agente) return null;
+  const vivo = estadoVivoDe(agente.id);
+  return vivo ? vivo.estado : agente.estado; // vivo manda; el estático es el fallback
 }
 
 function renderPaleta() {
@@ -1043,6 +1146,8 @@ document.addEventListener("pointerup", () => {
 // Isla en modo oficina: lista a quiénes sientan ahí; click en uno abre su panel.
 function abrirPanelIsla(obj) {
   const sentados = (obj.asientos || []).map((id) => id && AGENTES.find((a) => a.id === id)).filter(Boolean);
+  panelAgenteActual = null;
+  document.querySelectorAll(".solo-agente").forEach((el) => { el.style.display = "none"; });
   document.getElementById("panel-avatar-wrap").innerHTML = ICONO_HERRAMIENTA.isla.replace("<svg", '<svg class="avatar"');
   document.getElementById("panel-nombre").textContent = "Isla";
   document.getElementById("panel-rol").textContent = sentados.length ? "Escritorio compartido — quién se sienta acá:" : "Escritorio compartido, todavía sin nadie.";
@@ -1280,28 +1385,86 @@ function tiempoRelativo(iso) {
   return `hace ${dias} d`;
 }
 
+let panelAgenteActual = null;
+
 async function abrirPanel(agente) {
+  panelAgenteActual = agente;
   document.getElementById("panel-avatar-wrap").innerHTML = avatarParaAgente(agente);
   document.getElementById("panel-nombre").textContent = agente.nombre;
   document.getElementById("panel-rol").textContent = agente.rol;
   document.getElementById("panel-nota").textContent = agente.nota;
+  document.getElementById("panel-extra").innerHTML = "";
+  document.querySelectorAll(".solo-agente").forEach((el) => { el.style.display = ""; });
+
+  // estado vivo: qué está haciendo, si espera algo tuyo
+  const vivo = estadoVivoDe(agente.id);
+  const badge = document.getElementById("panel-badge");
+  const info = ESTADOS_VIVOS[vivo ? vivo.estado : "inactivo"] || ESTADOS_VIVOS.inactivo;
+  badge.textContent = info.texto;
+  badge.className = "badge badge-" + info.clase;
+  document.getElementById("panel-actualizado").textContent = vivo && vivo.actualizado ? "reportó " + tiempoRelativo(vivo.actualizado) : "sin reporte";
+  document.getElementById("panel-tarea").textContent = vivo && vivo.tarea ? vivo.tarea : "Sin tarea reportada.";
+  document.getElementById("panel-detalle").textContent = vivo && vivo.detalle ? vivo.detalle : "";
+  const preg = document.getElementById("panel-pregunta");
+  if (vivo && vivo.estado === "esperando_dueno" && vivo.pregunta) {
+    preg.innerHTML = `<strong>Está esperando de vos:</strong> ${vivo.pregunta.replace(/</g, "&lt;")}`;
+    preg.style.display = "block";
+  } else {
+    preg.style.display = "none";
+  }
+
+  // caja para pedirle / contestarle
+  const texto = document.getElementById("pedido-texto");
+  const nota = document.getElementById("pedido-nota");
+  texto.value = "";
+  texto.placeholder = agente.gerente ? "Pedile algo a FiBOT — él decide quién lo agarra…" : (vivo && vivo.estado === "esperando_dueno" ? "Contestale…" : "Decile algo…");
+  nota.textContent = OFICINA_API ? "" : "Todavía no está conectado a FiBOT (Etapa 2): por ahora, por Telegram.";
+  document.getElementById("pedido-enviar").disabled = !OFICINA_API;
+
+  // link al repo/artefacto, chiquito abajo — dejó de ser lo principal
   const link = document.getElementById("panel-link");
-  link.href = agente.link;
-  link.textContent = agente.link_label || "Ver más";
+  const href = (vivo && vivo.link) || agente.link;
+  link.href = href || "#";
+  link.textContent = href ? ((vivo && vivo.link) ? "ver detalle ↗" : (agente.link_label || "repo") + " ↗") : "";
+  link.style.display = href ? "inline" : "none";
+
   const commit = document.getElementById("panel-commit");
   commit.style.display = "none";
-  document.getElementById("panel-extra").innerHTML = "";
-  link.style.display = "inline-block";
   document.getElementById("fondo-modal").classList.add("abierto");
 
   if (agente.repo) {
-    const info = await obtenerUltimoCommit(agente.repo);
-    if (info) {
-      commit.innerHTML = `Último commit (en vivo): <strong>${info.mensaje}</strong> — ${tiempoRelativo(info.fecha)}`;
+    const c = await obtenerUltimoCommit(agente.repo);
+    if (c && panelAgenteActual === agente) {
+      commit.innerHTML = `Último commit: <strong>${c.mensaje}</strong> — ${tiempoRelativo(c.fecha)}`;
       commit.style.display = "block";
     }
   }
 }
+
+document.getElementById("form-pedido").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const texto = document.getElementById("pedido-texto");
+  const nota = document.getElementById("pedido-nota");
+  const boton = document.getElementById("pedido-enviar");
+  if (!texto.value.trim() || !panelAgenteActual) return;
+  boton.disabled = true; nota.textContent = "Enviando…";
+  try {
+    const r = await pedir(panelAgenteActual.id, texto.value.trim());
+    nota.textContent = r && r.respuesta ? r.respuesta : "Enviado. FiBOT te avisa por Telegram y acá cuando haya novedades.";
+    texto.value = "";
+    const nuevo = await cargarEstado();
+    if (nuevo) { ESTADO = nuevo; render(); }
+  } catch (err) {
+    nota.textContent = err.message;
+  } finally {
+    boton.disabled = !OFICINA_API;
+  }
+});
+
+document.getElementById("btn-fibot").addEventListener("click", () => {
+  const gerente = AGENTES.find((a) => a.gerente);
+  if (gerente) abrirPanel(gerente);
+});
 
 document.getElementById("cerrar").addEventListener("click", () => {
   document.getElementById("fondo-modal").classList.remove("abierto");
@@ -1325,6 +1488,8 @@ async function iniciar() {
     return;
   }
   AVATARES = await cargarAvatares();
+  ESTADO = await cargarEstado();
+  programarEstado();
 
   const local = cargarLayoutLocal();
   if (local) {
