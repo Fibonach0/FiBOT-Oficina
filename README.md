@@ -6,6 +6,11 @@ oficina 2D. Click en un escritorio para ver el detalle y el link al repo.
 Sitio estático, sin build ni dependencias — se edita y se pushea; GitHub
 Pages publica en **oficina.fibot.ar**.
 
+Se entra con la **misma cuenta de hub.fibot.ar** (Supabase Auth, mismo
+proyecto), y sólo pasa la cuenta de Nacho. Es una cortina, no una pared —
+los JSON del sitio siguen siendo públicos por URL; ver "La puerta" en
+`CLAUDE.md` antes de guardar acá algo sensible.
+
 Tiene **Modo diseño**: elegís muebles de una paleta y armás el layout
 arrastrando, como el área de construcción de un juego de simulación. Ver
 "Modo diseño" en `CLAUDE.md` para cómo persiste (spoiler: en el navegador de

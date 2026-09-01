@@ -160,6 +160,48 @@ que escriba un `agents.json`/`layout.json` actualizado (puede leer repos
 privados con un token que vive como secret de Action, nunca en el cliente),
 o un endpoint chico. Nada de esto lo puede hacer el sitio estático solo.
 
+## La puerta — login con la cuenta de hub.fibot.ar, y entra una sola persona
+
+Pedido de Nacho: que para entrar haga falta **su misma clave de
+hub.fibot.ar**, y que **sólo la suya** funcione. Se resolvió contra el mismo
+proyecto de Supabase que usa `cantapp` (URL + publishable key, ambos
+públicos por diseño — viajan en el build de hub.fibot.ar), **sin librería**:
+el login por clave de Supabase Auth es una llamada REST
+(`POST /auth/v1/token?grant_type=password`), la sesión se valida con
+`GET /auth/v1/user`, se renueva con `grant_type=refresh_token` y se cierra
+con `POST /auth/v1/logout`. Todo en `index.html`, bloque "puerta". Cero
+dependencia nueva (la librería oficial pesa 212KB y acá se usa un 2%).
+
+**Sólo el dueño**: después de un login exitoso se compara el `sha256` del
+mail (en minúsculas — los mails de ese proyecto están normalizados así) con
+`AUTH.duenoSha256`. Cualquier otra cuenta válida de hub ve "Esta oficina es
+solo de Nacho", se le cierra la sesión en Supabase y no se guarda nada.
+El hash en vez del mail en texto plano es para no dejar el mail escrito en
+un repo público; **no es un secreto ni protege nada** — es pudor.
+
+**Lo que esto NO es — la misma advertencia que en cantapp, agravada**: es
+una **cortina, no una pared**. El sitio es estático en GitHub Pages:
+`agents.json`, `layout.json` y `avatares.json` se bajan directo por URL
+aunque nunca se pase por la puerta, y el repo es público. La puerta sirve
+para que la oficina no quede abierta a cualquiera que tenga el link, y para
+que la experiencia sea "mi panel con mi clave". **No sirve para poner ahí
+nada sensible** — si algún día hace falta eso, el camino real es
+**Cloudflare Access** delante del hostname (Nacho ya lo usa para el túnel
+del mini-server; policy "mail = el suyo"), que sí bloquea las URLs de los
+archivos, no sólo la UI. Requiere pasar el DNS a proxy naranja, con lo que
+GitHub deja de renovar su certificado — se resuelve con SSL "Full" en
+Cloudflare, pero hay que hacerlo a conciencia, no de pasada.
+
+La sesión vive en `localStorage` (`fibot-oficina-sesion`) y es propia de
+`oficina.fibot.ar` — no se comparte con hub.fibot.ar aunque sea la misma
+cuenta (distinto origen). Se pide la clave una vez por navegador.
+
+Testeado con Playwright interceptando `supabase.co` (`page.route`), sin
+tocar producción ni necesitar la clave de nadie: puerta cerrada por
+defecto y sin fetch de datos hasta entrar, clave incorrecta, otra cuenta
+de hub rechazada + logout remoto, dueño entra, sesión persiste al recargar,
+refresh automático al vencer, token inválido vuelve a la puerta, Salir.
+
 ## Convenciones
 
 - **Nunca commitear directo a `main`**: rama + PR.
