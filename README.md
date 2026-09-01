@@ -31,11 +31,12 @@ Modo diseño.
 ## El estado vivo
 
 Lo que cada escritorio muestra (tarea, "te pregunta algo", cuándo reportó)
-sale de `estado.json` — hoy una muestra estática — o, cuando `OFICINA_API`
-en `index.html` apunte a Personal-FiBOT, de `GET /oficina/estado` cada
-minuto, y los pedidos van a `POST /oficina/pedir`. Contrato y detalle en
-"FiBOT gerente + estado vivo" de `CLAUDE.md`. Hasta que eso esté conectado,
-el botón Enviar queda deshabilitado y los pedidos van por Telegram.
+sale de Personal-FiBOT (`OFICINA_API` en `index.html`): `GET /oficina/estado`
+cada minuto, y los pedidos van a `POST /oficina/pedir`. Si la API no
+responde, se ve el estado estático de `agents.json`; `estado.json` es una
+muestra del contrato para probar sin backend. Contrato y detalle en
+"FiBOT gerente + estado vivo" de `CLAUDE.md`. FiBOT espeja cada pedido y
+cada respuesta por Telegram.
 
 ## Actualizar el roster
 

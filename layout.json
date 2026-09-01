@@ -6,7 +6,7 @@
       "nombre": "Principal",
       "grid": {
         "cols": 10,
-        "rows": 6,
+        "rows": 7,
         "cell": 140
       },
       "objetos": [
@@ -61,31 +61,52 @@
           "id": "deco-planta-1",
           "tipo": "planta",
           "x": 0,
-          "y": 4
+          "y": 6
         },
         {
           "id": "deco-planta-2",
           "tipo": "planta",
           "x": 9,
-          "y": 4
+          "y": 6
         },
         {
           "id": "deco-alfombra-1",
           "tipo": "alfombra",
           "x": 4,
-          "y": 4
+          "y": 6
         },
         {
           "id": "deco-sofa-1",
           "tipo": "sofa",
           "x": 3,
-          "y": 4
+          "y": 6
         },
         {
           "id": "deco-cafetera-1",
           "tipo": "cafetera",
           "x": 5,
-          "y": 4
+          "y": 6
+        },
+        {
+          "id": "desk-flotabot",
+          "tipo": "escritorio",
+          "x": 1,
+          "y": 4,
+          "agenteId": "flotabot"
+        },
+        {
+          "id": "desk-peajes",
+          "tipo": "escritorio",
+          "x": 4,
+          "y": 4,
+          "agenteId": "peajes"
+        },
+        {
+          "id": "desk-casa",
+          "tipo": "escritorio",
+          "x": 7,
+          "y": 4,
+          "agenteId": "casa"
         }
       ]
     }
