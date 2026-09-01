@@ -12,7 +12,9 @@ los JSON del sitio siguen siendo públicos por URL; ver "La puerta" en
 `CLAUDE.md` antes de guardar acá algo sensible.
 
 Tiene **Modo diseño**: elegís muebles de una paleta y armás el layout
-arrastrando, como el área de construcción de un juego de simulación. Ver
+arrastrando, como el área de construcción de un juego de simulación —
+incluye muros que se pintan arrastrando, puertas, islas con 4 asientos y
+una goma. Ver
 "Modo diseño" en `CLAUDE.md` para cómo persiste (spoiler: en el navegador de
 quien diseña, hasta que se exporta y se commitea `layout.json`).
 
