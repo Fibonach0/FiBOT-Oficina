@@ -52,30 +52,71 @@ Ver conversación de origen para el detalle de por qué se separó en dos fases.
 
 ```
 index.html   la oficina entera: HTML + CSS + JS vanilla, sin build ni framework
-agents.json  el roster — nombre, rol, color, estado, nota, link
+agents.json  el roster — nombre, rol, color, estado, nota, link, repo (opcional)
+layout.json  el diseño "oficial" — grilla + qué mueble va en qué celda
 CNAME        oficina.fibot.ar
 ```
 
-Cada escritorio es un SVG dibujado a mano (`avatarSVG()` en `index.html`) —
-nada de assets externos, cero riesgo de licencia. El estado (`activo` /
-`pausa` / `bloqueado`) es el punto de color en el monitor; la nota corta es
-lo primero que se lee, el panel de detalle (click) trae la descripción larga
-y el link al repo.
+Cada escritorio y cada mueble es un SVG dibujado a mano (`avatarSVG()` /
+`DECO_SVG` en `index.html`) — nada de assets externos, cero riesgo de
+licencia. El estado (`activo` / `pausa` / `bloqueado`) es el punto de color
+en el monitor; la nota corta es lo primero que se lee, el panel de detalle
+(click) trae la descripción larga, el link al repo y —si el agente tiene
+`repo` público— el último commit en vivo.
 
-## Estado de los datos: a mano, a propósito (por ahora)
+**`agents.json` (el roster) y `layout.json` (dónde va cada cosa) están
+separados a propósito**: un escritorio en el layout sólo guarda `agenteId`,
+nunca los datos del agente. Así mover muebles no toca el roster, y cambiar
+la nota de un agente no rompe el layout.
 
-`agents.json` se edita a mano. Conectar datos en vivo es el próximo paso
-lógico, pero **no puede ser un fetch directo del browser a la API de GitHub
-para los repos privados** (Personal-FiBOT, jarvis) porque expondría un token
-en una página pública. Caminos reales para cuando se quiera automatizar:
+### Modo diseño — construcción estilo Sims
 
-- Repos **públicos** (FiBOT-Consultorio, hoy) sí se pueden leer en vivo desde
-  el browser sin token (API pública de GitHub, sin auth, con rate limit).
-- Para repos privados o para datos que no viven en GitHub (la rutina de
-  prospección hoy guarda su tracker en un scratchpad de sesión, ni siquiera
-  en un repo), hace falta algo que escriba un `agents.json` actualizado desde
-  el lado de atrás (una GitHub Action programada, o un endpoint chico) — no
-  algo que este sitio estático pueda hacer solo.
+Botón "Modo diseño" en el header. Con la paleta abierta: elegís un mueble,
+click en una celda libre del piso para colocarlo; arrastrás (pointer events,
+mouse y touch) lo ya puesto para moverlo; `Delete`/`Backspace` borra la
+selección; un escritorio seleccionado tiene un `<select>` para asignarle (o
+sacarle) un agente. Todo en una sola grilla de celdas de 1×1 — nada de
+rotación ni de muebles de más de una celda en esta v1, a propósito, para que
+la lógica de colisión/arrastre sea trivial y no tenga bugs de bordes.
+
+**Persistencia, y por qué es así:** cada cambio se guarda solo en
+`localStorage` del navegador de quien está diseñando (`guardarLocal()`) — no
+hay backend que reciba el diseño en vivo, es un sitio estático. Un diseño en
+`localStorage` es un *boceto personal*, no lo ve nadie más. Para que un
+diseño sea "lo que ve cualquiera que entra", hay que **exportarlo**
+(`Descargar layout.json` en modo diseño) y commitear ese archivo acá —
+Nacho lo puede hacer él mismo (tiene push) o pasármelo para que lo suba.
+"Restablecer al oficial" borra el boceto local y vuelve a leer el
+`layout.json` commiteado.
+
+Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
+genera un layout mínimo con un escritorio por agente en fila — la página
+nunca queda en blanco por falta de ese archivo.
+
+## Datos en vivo — sólo para lo que es de verdad público
+
+`agente.repo` ("owner/nombre") habilita el commit más reciente en vivo en el
+panel de detalle, vía `https://api.github.com/repos/{repo}/commits` sin
+auth, client-side. **Nunca poner `repo` en un agente cuyo repo sea
+privado** — el fetch sin token le pegaría un 404 a cualquiera que entre, y
+la solución NUNCA es meter un token en este archivo (lo sirve un sitio
+público). Verificado a mano cuáles son realmente públicos antes de
+cargarlos (`curl api.github.com/repos/... | jq .private`) — varios repos
+del ecosistema con nombre "genérico" resultaron privados pese a las
+apariencias, así que no asumir, comprobar.
+
+Para lo que no es un repo público (Personal-FiBOT, jarvis, o algo que ni
+vive en GitHub como el tracker de la rutina de prospección), sigue siendo
+`nota` a mano — ver la sección de abajo para el camino a futuro si se
+quiere automatizar eso también.
+
+## Estado de los datos que siguen siendo a mano
+
+Fuera de los repos públicos, `agents.json` se edita a mano. Caminos reales
+para cuando se quiera automatizar el resto: una GitHub Action programada
+que escriba un `agents.json`/`layout.json` actualizado (puede leer repos
+privados con un token que vive como secret de Action, nunca en el cliente),
+o un endpoint chico. Nada de esto lo puede hacer el sitio estático solo.
 
 ## Convenciones
 
