@@ -64,6 +64,8 @@
   .btn.peligro { background: #fff; color: var(--orange); border: 1px solid var(--orange); }
   .btn:disabled { opacity: .45; cursor: default; }
   .barra-acciones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .selector-estilo { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); margin-right: 4px; }
+  .selector-estilo select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--rule); font-family: inherit; font-size: .85rem; }
 
   .escena {
     display: flex;
@@ -201,6 +203,10 @@
     <p id="subtitulo">Panel personal — en qué anda cada frente, de un vistazo.</p>
   </div>
   <div class="barra-acciones">
+    <label class="selector-estilo">
+      Avatares:
+      <select id="sel-estilo-avatar"></select>
+    </label>
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
     <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
     <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
@@ -332,12 +338,65 @@ function paletaIconoSVG(tipo) {
   return DECO_SVG[tipo] || "";
 }
 
+// ---------- estilos de avatar (Clásico propio + 3 sets de DiceBear, CC0, pre-generados en avatares.json) ----------
+
+const CLAVE_ESTILO_AVATAR = "fibot-oficina-estilo-avatar";
+let AVATARES = null; // contenido de avatares.json
+let estiloAvatar = localStorage.getItem(CLAVE_ESTILO_AVATAR) || "openPeeps";
+let contadorDedupeId = 0;
+
+const NOMBRE_ESTILO = { clasico: "Clásico", openPeeps: "Open Peeps", lorelei: "Lorelei", pixelArt: "Pixel Art" };
+
+// DiceBear reutiliza los mismos id= (viewboxMask, etc.) en todos los SVG que genera —
+// si se muestran varios avatares a la vez en la página colisionan (un <mask> puede
+// terminar aplicándose al avatar equivocado). Se renombran a algo único cada vez que
+// se inserta uno en el DOM.
+function idsUnicos(svg) {
+  contadorDedupeId++;
+  const sufijo = "-d" + contadorDedupeId;
+  const idsEncontrados = new Set([...svg.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  let resultado = svg;
+  idsEncontrados.forEach((id) => {
+    resultado = resultado.split(`id="${id}"`).join(`id="${id}${sufijo}"`);
+    resultado = resultado.split(`url(#${id})`).join(`url(#${id}${sufijo})`);
+    resultado = resultado.split(`href="#${id}"`).join(`href="#${id}${sufijo}"`);
+  });
+  return resultado;
+}
+
+function avatarParaAgente(agente) {
+  if (estiloAvatar === "clasico" || !AVATARES) return avatarSVG(agente.color);
+  const svg = AVATARES.avatares[agente.id] && AVATARES.avatares[agente.id][estiloAvatar];
+  return svg ? idsUnicos(svg) : avatarSVG(agente.color);
+}
+
+function poblarSelectorEstilo() {
+  const sel = document.getElementById("sel-estilo-avatar");
+  const disponibles = ["clasico", ...(AVATARES ? Object.keys(AVATARES.estilos).filter((e) => e !== "clasico") : [])];
+  sel.innerHTML = disponibles.map((e) => `<option value="${e}" ${e === estiloAvatar ? "selected" : ""}>${NOMBRE_ESTILO[e] || e}</option>`).join("");
+  sel.addEventListener("change", (e) => {
+    estiloAvatar = e.target.value;
+    localStorage.setItem(CLAVE_ESTILO_AVATAR, estiloAvatar);
+    render();
+  });
+}
+
 // ---------- carga de datos ----------
 
 async function cargarAgentes() {
   const res = await fetch("agents.json", { cache: "no-store" });
   const data = await res.json();
   return data.agentes;
+}
+
+async function cargarAvatares() {
+  try {
+    const res = await fetch("avatares.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("sin avatares.json");
+    return await res.json();
+  } catch (e) {
+    return null; // sin este archivo el sitio sigue andando con el avatar clásico
+  }
 }
 
 function layoutPorDefecto() {
@@ -405,7 +464,7 @@ function elementoDe(obj) {
   if (obj.tipo === "escritorio") {
     const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
     el.innerHTML = `
-      <div class="avatar-wrap">${agente ? avatarSVG(agente.color) : sillaVaciaSVG()}</div>
+      <div class="avatar-wrap">${agente ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
       <div class="mueble${agente ? "" : " vacio"}"></div>
       <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
     `;
@@ -662,7 +721,7 @@ function tiempoRelativo(iso) {
 }
 
 async function abrirPanel(agente) {
-  document.getElementById("panel-avatar-wrap").innerHTML = avatarSVG(agente.color);
+  document.getElementById("panel-avatar-wrap").innerHTML = avatarParaAgente(agente);
   document.getElementById("panel-nombre").textContent = agente.nombre;
   document.getElementById("panel-rol").textContent = agente.rol;
   document.getElementById("panel-nota").textContent = agente.nota;
@@ -701,6 +760,10 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("tablero").textContent = "No se pudo cargar agents.json: " + e.message;
     return;
   }
+  AVATARES = await cargarAvatares();
+  if (!AVATARES && estiloAvatar !== "clasico") estiloAvatar = "clasico";
+  poblarSelectorEstilo();
+
   const local = cargarLayoutLocal();
   if (local) {
     LAYOUT = local;
