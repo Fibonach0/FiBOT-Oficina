@@ -16,11 +16,13 @@ arrastrando, como el área de construcción de un juego de simulación. Ver
 "Modo diseño" en `CLAUDE.md` para cómo persiste (spoiler: en el navegador de
 quien diseña, hasta que se exporta y se commitea `layout.json`).
 
-También tiene un selector de **estilo de avatar** (Clásico / Open Peeps /
-Lorelei / Pixel Art) arriba a la derecha — los tres estilos ilustrados son
-CC0 de [DiceBear](https://www.dicebear.com/), pre-generados y embebidos en
-`avatares.json` (cero dependencia externa en tiempo de ejecución). Ver
-"Avatares" en `CLAUDE.md`.
+Los avatares son **Open Peeps** (Pablo Stanley, CC0), pre-generados y
+embebidos en `avatares.json` — cero dependencia externa en tiempo de
+ejecución. Ver "Avatares" en `CLAUDE.md`.
+
+La oficina puede tener **varias salas** (pestañas arriba del piso), cada
+una con su grilla y sus muebles. Se crean, renombran y eliminan desde
+Modo diseño.
 
 ## Actualizar el estado de un agente
 

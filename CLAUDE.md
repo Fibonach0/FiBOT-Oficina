@@ -53,8 +53,8 @@ Ver conversación de origen para el detalle de por qué se separó en dos fases.
 ```
 index.html     la oficina entera: HTML + CSS + JS vanilla, sin build ni framework
 agents.json    el roster — nombre, rol, color, estado, nota, link, repo (opcional)
-layout.json    el diseño "oficial" — grilla + qué mueble va en qué celda
-avatares.json  los 3 sets de avatares CC0 pre-generados (ver más abajo)
+layout.json    el diseño "oficial" — salas, cada una con su grilla y sus muebles
+avatares.json  los avatares Open Peeps (CC0) pre-generados, uno por agente
 CNAME          oficina.fibot.ar
 ```
 
@@ -87,6 +87,18 @@ colisión/arrastre sea trivial y no tenga bugs de bordes. Las teclas
 (Delete, R, Escape) se ignoran si el foco está en un input o select — que un
 Backspace en el desplegable de agente no borre el escritorio.
 
+**Salas**: el diseño son varias salas con pestañas arriba del piso
+(esquema v2 de `layout.json`: `{ salas: [ {id, nombre, grid, objetos} ] }`).
+Cada sala tiene su propia grilla y sus muebles; la pestaña activa se recuerda
+en `localStorage` (`fibot-oficina-sala`). En modo diseño: **+ Sala** (pide
+nombre), **Renombrar** y **Eliminar sala** (sólo si hay más de una, con
+confirmación que dice cuántos muebles se van). En el código, `DISENO` es el
+diseño entero y `LAYOUT` es la sala activa — una referencia a un elemento de
+`DISENO.salas`, así todo lo que ya operaba sobre `LAYOUT.grid`/`.objetos`
+siguió andando sin tocarlo. `normalizarDiseno()` acepta el esquema v1 (grid
++ objetos al tope, lo que había en el `layout.json` y en el localStorage de
+Nacho) y lo migra a una sala "Principal": actualizar no borra nada.
+
 Muebles disponibles (todos SVG propio, `DECO_SVG`): escritorio, planta,
 estantería, sofá, cafetera, pizarrón, alfombra, divisor, ventana, reloj,
 archivero, dispenser, impresora. Sumar uno es agregar una entrada en
@@ -106,28 +118,27 @@ Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
 genera un layout mínimo con un escritorio por agente en fila — la página
 nunca queda en blanco por falta de ese archivo.
 
-## Avatares — 4 estilos, elegibles, cero dependencia en tiempo de ejecución
+## Avatares — Open Peeps, y nada más
 
-Selector "Avatares" en el header (persiste en `localStorage`, es preferencia
-de quien mira, no del layout). Cuatro opciones:
+Un solo estilo, por decisión de Nacho (hubo un selector con Lorelei y Pixel
+Art; los probó y se quedó con Open Peeps, así que el selector y esos dos sets
+se sacaron — eran 40KB que nadie iba a ver). **Open Peeps** es de Pablo
+Stanley, **CC0 1.0** (dominio público, sin atribución obligatoria), elegido a
+propósito entre los estilos de [DiceBear](https://www.dicebear.com/) que
+**son** CC0 — DiceBear tiene 61 estilos y varios (ej. Adventurer) son
+CC-BY-4.0 (piden crédito visible) o de licencia más restrictiva; no vale
+asumir, hay que mirar cada uno. El circulito clásico (`avatarSVG()`) queda
+únicamente como **fallback** si `avatares.json` no carga o un agente nuevo
+todavía no tiene avatar generado.
 
-- **Clásico** — el circulito con cara dibujado a mano (`avatarSVG()`), el
-  original de la v1. Cero dependencias, siempre disponible.
-- **Open Peeps** (Pablo Stanley), **Lorelei** (Lisa Wischofsky) y **Pixel
-  Art** (DiceBear) — los tres **CC0 1.0** (dominio público, sin atribución
-  obligatoria), elegidos a propósito entre los estilos de
-  [DiceBear](https://www.dicebear.com/) que **son** CC0 — DiceBear tiene 61
-  estilos y varios (ej. Adventurer) son CC-BY-4.0 (piden crédito visible) o
-  de licencia más restrictiva; no vale asumir, hay que mirar cada uno.
-
-**Por qué están embebidos en `avatares.json` y no vienen de la API/librería
-de DiceBear en vivo**: es la misma lógica que ya rige el resto del sitio —
-cero dependencia externa en tiempo de ejecución. Se generaron **una sola
-vez**, localmente, con `@dicebear/core` + `@dicebear/collection` (Node) y
-quedaron commiteados como SVG crudo. Si en algún momento se suman más
-agentes hace falta regenerar `avatares.json` corriendo ese mismo script de
-nuevo (no está en el repo — es un array de 10 líneas, rehacerlo es más
-rápido que mantenerlo).
+**Por qué está embebido en `avatares.json` y no viene de la API/librería de
+DiceBear en vivo**: es la misma lógica que ya rige el resto del sitio — cero
+dependencia externa en tiempo de ejecución. Se generó **una sola vez**,
+localmente, con `@dicebear/core` + `@dicebear/collection` (Node) y quedó
+commiteado como SVG crudo. Al sumar un agente hace falta regenerar su
+avatar: `createAvatar(openPeeps, { seed: agenteId })`, sacar `<metadata>`,
+sacar `width`/`height` **sólo de la etiqueta `<svg>` raíz** (ver el segundo
+bug de abajo) y ponerle `class="avatar"`. No está en el repo — son 10 líneas.
 
 **Bug real que ya pasó acá, para no repetirlo**: DiceBear devuelve el mismo
 `id="viewboxMask"` en TODOS los avatares que genera. Con un solo avatar en
