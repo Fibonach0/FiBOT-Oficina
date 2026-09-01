@@ -73,9 +73,9 @@ FlotaBot). El botón **Pedirle a FiBOT** del header abre su panel directo.
       "link": "opcional: PR, corrida, lo que sea" } } }
 ```
 
-Hoy (`OFICINA_API = ""` en `index.html`) se lee **`estado.json`**, que es una
-muestra estática y no cambia sola. Con `OFICINA_API` apuntando a
-Personal-FiBOT, la oficina pide `GET {api}/oficina/estado` cada minuto y
+`OFICINA_API` en `index.html` apunta al bot (`jarvis-bot-production-31a4.up.railway.app`,
+servicio Personal-FiBOT en Railway); si se vacía, la oficina cae a
+**`estado.json`**, una muestra estática que no cambia sola. Con la API, la oficina pide `GET {api}/oficina/estado` cada minuto y
 manda pedidos a `POST {api}/oficina/pedir` `{para, texto}`, en ambos casos
 con el `access_token` de Supabase de la puerta como `Bearer`. **La
 autorización real va del lado de FiBOT**: verifica ese token contra
