@@ -1,17 +1,86 @@
 {
-  "_readme": "Diseño de la oficina — grilla + objetos colocados. Se edita desde 'Modo diseño' en la página (arrastrar/soltar) y se descarga desde ahí; este archivo es la versión 'oficial' que ve cualquiera que entre sin haber diseñado nada en su propio navegador (localStorage manda sobre esto en el navegador de quien lo edita).",
-  "grid": { "cols": 10, "rows": 6, "cell": 140 },
-  "objetos": [
-    { "id": "desk-prospeccion", "tipo": "escritorio", "x": 1, "y": 2, "agenteId": "prospeccion" },
-    { "id": "desk-consultorio", "tipo": "escritorio", "x": 3, "y": 2, "agenteId": "consultorio" },
-    { "id": "desk-farmacia", "tipo": "escritorio", "x": 5, "y": 2, "agenteId": "farmacia" },
-    { "id": "desk-personal", "tipo": "escritorio", "x": 7, "y": 2, "agenteId": "personal-fibot" },
-    { "id": "deco-pizarra-1", "tipo": "pizarra", "x": 0, "y": 0 },
-    { "id": "deco-estanteria-1", "tipo": "estanteria", "x": 9, "y": 0 },
-    { "id": "deco-planta-1", "tipo": "planta", "x": 0, "y": 4 },
-    { "id": "deco-planta-2", "tipo": "planta", "x": 9, "y": 4 },
-    { "id": "deco-alfombra-1", "tipo": "alfombra", "x": 4, "y": 4 },
-    { "id": "deco-sofa-1", "tipo": "sofa", "x": 3, "y": 4 },
-    { "id": "deco-cafetera-1", "tipo": "cafetera", "x": 5, "y": 4 }
+  "_readme": "Diseño de la oficina, esquema v2: varias salas (pestañas), cada una con su grilla y sus objetos. Se edita desde 'Modo diseño' (arrastrar/soltar, +Sala, Renombrar, Eliminar sala) y se descarga desde ahí; este archivo es la versión 'oficial' que ve cualquiera que entre sin haber diseñado nada en su propio navegador (localStorage manda sobre esto en el navegador de quien lo edita). index.html también acepta el esquema v1 (grid + objetos al tope) y lo migra a una sala 'Principal' al cargarlo.",
+  "salas": [
+    {
+      "id": "principal",
+      "nombre": "Principal",
+      "grid": {
+        "cols": 10,
+        "rows": 6,
+        "cell": 140
+      },
+      "objetos": [
+        {
+          "id": "desk-prospeccion",
+          "tipo": "escritorio",
+          "x": 1,
+          "y": 2,
+          "agenteId": "prospeccion"
+        },
+        {
+          "id": "desk-consultorio",
+          "tipo": "escritorio",
+          "x": 3,
+          "y": 2,
+          "agenteId": "consultorio"
+        },
+        {
+          "id": "desk-farmacia",
+          "tipo": "escritorio",
+          "x": 5,
+          "y": 2,
+          "agenteId": "farmacia"
+        },
+        {
+          "id": "desk-personal",
+          "tipo": "escritorio",
+          "x": 7,
+          "y": 2,
+          "agenteId": "personal-fibot"
+        },
+        {
+          "id": "deco-pizarra-1",
+          "tipo": "pizarra",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "deco-estanteria-1",
+          "tipo": "estanteria",
+          "x": 9,
+          "y": 0
+        },
+        {
+          "id": "deco-planta-1",
+          "tipo": "planta",
+          "x": 0,
+          "y": 4
+        },
+        {
+          "id": "deco-planta-2",
+          "tipo": "planta",
+          "x": 9,
+          "y": 4
+        },
+        {
+          "id": "deco-alfombra-1",
+          "tipo": "alfombra",
+          "x": 4,
+          "y": 4
+        },
+        {
+          "id": "deco-sofa-1",
+          "tipo": "sofa",
+          "x": 3,
+          "y": 4
+        },
+        {
+          "id": "deco-cafetera-1",
+          "tipo": "cafetera",
+          "x": 5,
+          "y": 4
+        }
+      ]
+    }
   ]
 }

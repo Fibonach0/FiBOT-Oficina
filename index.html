@@ -64,8 +64,13 @@
   .btn.peligro { background: #fff; color: var(--orange); border: 1px solid var(--orange); }
   .btn:disabled { opacity: .45; cursor: default; }
   .barra-acciones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .selector-estilo { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); margin-right: 4px; }
-  .selector-estilo select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--rule); font-family: inherit; font-size: .85rem; }
+  /* -------- salas (pestañas arriba del piso) -------- */
+  .columna-tablero { flex: 1; min-width: 0; }
+  .salas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .sala-tab { background: #fff; border: 1px solid var(--rule); border-radius: 8px 8px 0 0; padding: 7px 14px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+  .sala-tab.activa { background: var(--wood); color: #fff; border-color: var(--wood-dark); }
+  .sala-accion { background: none; border: 1px dashed var(--rule); border-radius: 8px; padding: 6px 10px; font-size: .8rem; color: var(--muted); }
+  .sala-accion:hover { border-color: var(--green); color: var(--green); }
 
   .escena {
     display: flex;
@@ -236,10 +241,6 @@
     <p id="subtitulo">Panel personal — en qué anda cada frente, de un vistazo.</p>
   </div>
   <div class="barra-acciones">
-    <label class="selector-estilo">
-      Avatares:
-      <select id="sel-estilo-avatar"></select>
-    </label>
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
     <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
     <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
@@ -267,8 +268,11 @@
     <p class="paleta-ayuda">Elegí un mueble y hacé click en el piso para colocarlo. Arrastrá lo ya puesto para moverlo. Los escritorios se le asignan a un agente desde acá.</p>
   </aside>
 
-  <div class="tablero-envoltorio">
-    <div class="tablero" id="tablero"></div>
+  <div class="columna-tablero">
+    <div class="salas" id="salas"></div>
+    <div class="tablero-envoltorio">
+      <div class="tablero" id="tablero"></div>
+    </div>
   </div>
 </div>
 
@@ -507,7 +511,8 @@ const PALETA = [
 ];
 
 let AGENTES = [];
-let LAYOUT = null;
+let DISENO = null; // { salas: [ {id, nombre, grid, objetos} ] } — el diseño entero
+let LAYOUT = null; // la sala activa (referencia a un elemento de DISENO.salas)
 let layoutEsLocal = false;
 let modoDiseno = false;
 let herramientaArmada = null;
@@ -617,14 +622,12 @@ function paletaIconoSVG(tipo) {
   return DECO_SVG[tipo] || "";
 }
 
-// ---------- estilos de avatar (Clásico propio + 3 sets de DiceBear, CC0, pre-generados en avatares.json) ----------
+// ---------- avatares: Open Peeps (DiceBear, CC0), pre-generados en avatares.json ----------
+// Un solo estilo por decisión de Nacho. El circulito clásico (avatarSVG) queda
+// únicamente como fallback si avatares.json no carga o un agente no tiene avatar.
 
-const CLAVE_ESTILO_AVATAR = "fibot-oficina-estilo-avatar";
 let AVATARES = null; // contenido de avatares.json
-let estiloAvatar = localStorage.getItem(CLAVE_ESTILO_AVATAR) || "openPeeps";
 let contadorDedupeId = 0;
-
-const NOMBRE_ESTILO = { clasico: "Clásico", openPeeps: "Open Peeps", lorelei: "Lorelei", pixelArt: "Pixel Art" };
 
 // DiceBear reutiliza los mismos id= (viewboxMask, etc.) en todos los SVG que genera —
 // si se muestran varios avatares a la vez en la página colisionan (un <mask> puede
@@ -644,20 +647,8 @@ function idsUnicos(svg) {
 }
 
 function avatarParaAgente(agente) {
-  if (estiloAvatar === "clasico" || !AVATARES) return avatarSVG(agente.color);
-  const svg = AVATARES.avatares[agente.id] && AVATARES.avatares[agente.id][estiloAvatar];
+  const svg = AVATARES && AVATARES.avatares[agente.id] && AVATARES.avatares[agente.id].openPeeps;
   return svg ? idsUnicos(svg) : avatarSVG(agente.color);
-}
-
-function poblarSelectorEstilo() {
-  const sel = document.getElementById("sel-estilo-avatar");
-  const disponibles = ["clasico", ...(AVATARES ? Object.keys(AVATARES.estilos).filter((e) => e !== "clasico") : [])];
-  sel.innerHTML = disponibles.map((e) => `<option value="${e}" ${e === estiloAvatar ? "selected" : ""}>${NOMBRE_ESTILO[e] || e}</option>`).join("");
-  sel.addEventListener("change", (e) => {
-    estiloAvatar = e.target.value;
-    localStorage.setItem(CLAVE_ESTILO_AVATAR, estiloAvatar);
-    render();
-  });
 }
 
 // ---------- carga de datos ----------
@@ -678,20 +669,37 @@ async function cargarAvatares() {
   }
 }
 
+// Esquema v2: { salas: [ {id, nombre, grid, objetos} ] }. El v1 (grid + objetos al
+// tope, lo que había hasta ahora en layout.json y en el localStorage de Nacho) se
+// migra acá a una sala "Principal" — nada de lo diseñado se pierde al actualizar.
+function normalizarDiseno(data) {
+  if (data && Array.isArray(data.salas) && data.salas.length) {
+    data.salas.forEach((s, i) => {
+      if (!s.id) s.id = "sala-" + i;
+      if (!s.nombre) s.nombre = "Sala " + (i + 1);
+      if (!s.grid) s.grid = { cols: 10, rows: 6, cell: 140 };
+      if (!Array.isArray(s.objetos)) s.objetos = [];
+    });
+    return { salas: data.salas };
+  }
+  if (data && data.grid && Array.isArray(data.objetos)) {
+    return { salas: [{ id: "principal", nombre: "Principal", grid: data.grid, objetos: data.objetos }] };
+  }
+  return null;
+}
+
 function layoutPorDefecto() {
-  const cols = 10, rows = 6, cell = 140;
   const objetos = AGENTES.map((a, i) => ({
     id: "desk-" + a.id, tipo: "escritorio", x: 1 + i * 2, y: 2, agenteId: a.id,
   }));
-  return { grid: { cols, rows, cell }, objetos };
+  return { salas: [{ id: "principal", nombre: "Principal", grid: { cols: 10, rows: 6, cell: 140 }, objetos }] };
 }
 
 async function cargarLayoutOficial() {
   try {
     const res = await fetch("layout.json", { cache: "no-store" });
     if (!res.ok) throw new Error("sin layout.json");
-    const data = await res.json();
-    return { grid: data.grid, objetos: data.objetos };
+    return normalizarDiseno(await res.json()) || layoutPorDefecto();
   } catch (e) {
     return layoutPorDefecto();
   }
@@ -701,16 +709,77 @@ function cargarLayoutLocal() {
   try {
     const crudo = localStorage.getItem(CLAVE_LOCAL);
     if (!crudo) return null;
-    return JSON.parse(crudo);
+    return normalizarDiseno(JSON.parse(crudo));
   } catch (e) {
     return null;
   }
 }
 
 function guardarLocal() {
-  localStorage.setItem(CLAVE_LOCAL, JSON.stringify(LAYOUT));
+  localStorage.setItem(CLAVE_LOCAL, JSON.stringify(DISENO));
   layoutEsLocal = true;
   actualizarPie();
+}
+
+// ---------- salas ----------
+
+const CLAVE_SALA = "fibot-oficina-sala";
+
+function activarSala(id) {
+  LAYOUT = DISENO.salas.find((s) => s.id === id) || DISENO.salas[0];
+  try { localStorage.setItem(CLAVE_SALA, LAYOUT.id); } catch (e) { /* sin storage */ }
+  seleccionId = null;
+  herramientaArmada = null;
+  render();
+}
+
+function agregarSala() {
+  const nombre = prompt("Nombre de la sala nueva:", "Sala " + (DISENO.salas.length + 1));
+  if (!nombre || !nombre.trim()) return;
+  const sala = { id: idNuevo("sala"), nombre: nombre.trim(), grid: { cols: 10, rows: 6, cell: 140 }, objetos: [] };
+  DISENO.salas.push(sala);
+  guardarLocal();
+  activarSala(sala.id);
+}
+
+function renombrarSala() {
+  const nombre = prompt("Nuevo nombre para la sala:", LAYOUT.nombre);
+  if (!nombre || !nombre.trim()) return;
+  LAYOUT.nombre = nombre.trim();
+  guardarLocal();
+  render();
+}
+
+function eliminarSala() {
+  if (DISENO.salas.length <= 1) return; // siempre queda al menos una
+  const n = LAYOUT.objetos.length;
+  if (!confirm(`¿Eliminar la sala "${LAYOUT.nombre}"${n ? ` con sus ${n} muebles` : ""}? No se puede deshacer.`)) return;
+  const idx = DISENO.salas.findIndex((s) => s.id === LAYOUT.id);
+  DISENO.salas.splice(idx, 1);
+  guardarLocal();
+  activarSala(DISENO.salas[Math.max(0, idx - 1)].id);
+}
+
+function renderSalas() {
+  const cont = document.getElementById("salas");
+  cont.innerHTML = "";
+  DISENO.salas.forEach((s) => {
+    const b = document.createElement("button");
+    b.className = "sala-tab" + (s.id === LAYOUT.id ? " activa" : "");
+    b.textContent = s.nombre;
+    b.dataset.salaId = s.id;
+    b.addEventListener("click", () => activarSala(s.id));
+    cont.appendChild(b);
+  });
+  if (!modoDiseno) return;
+  const acciones = [["+ Sala", agregarSala, "btn-sala-agregar"], ["Renombrar", renombrarSala, "btn-sala-renombrar"]];
+  if (DISENO.salas.length > 1) acciones.push(["Eliminar sala", eliminarSala, "btn-sala-eliminar"]);
+  acciones.forEach(([texto, fn, id]) => {
+    const b = document.createElement("button");
+    b.className = "sala-accion"; b.textContent = texto; b.id = id;
+    b.addEventListener("click", fn);
+    cont.appendChild(b);
+  });
 }
 
 // ---------- render ----------
@@ -725,6 +794,7 @@ function render() {
   tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "");
   tablero.innerHTML = "";
   LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
+  renderSalas();
   renderPaleta();
   renderSeleccion();
 }
@@ -991,7 +1061,7 @@ document.getElementById("btn-modo").addEventListener("click", () => {
 });
 
 document.getElementById("btn-exportar").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(LAYOUT, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(DISENO, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -1004,10 +1074,9 @@ document.getElementById("btn-resetear").addEventListener("click", async () => {
   if (!confirm("Esto descarta tu boceto local y vuelve al layout.json oficial. ¿Seguir?")) return;
   localStorage.removeItem(CLAVE_LOCAL);
   layoutEsLocal = false;
-  LAYOUT = await cargarLayoutOficial();
-  seleccionId = null;
+  DISENO = await cargarLayoutOficial();
   actualizarPie();
-  render();
+  activarSala(localStorage.getItem(CLAVE_SALA));
 });
 
 // ---------- panel de detalle + commit en vivo ----------
@@ -1082,19 +1151,17 @@ async function iniciar() {
     return;
   }
   AVATARES = await cargarAvatares();
-  if (!AVATARES && estiloAvatar !== "clasico") estiloAvatar = "clasico";
-  poblarSelectorEstilo();
 
   const local = cargarLayoutLocal();
   if (local) {
-    LAYOUT = local;
+    DISENO = local;
     layoutEsLocal = true;
   } else {
-    LAYOUT = await cargarLayoutOficial();
+    DISENO = await cargarLayoutOficial();
     layoutEsLocal = false;
   }
   actualizarPie();
-  render();
+  activarSala(localStorage.getItem(CLAVE_SALA)); // si no existe, cae a la primera
 }
 
 (async function arranque() {
