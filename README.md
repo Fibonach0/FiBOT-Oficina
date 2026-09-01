@@ -28,6 +28,16 @@ La oficina puede tener **varias salas** (pestañas arriba del piso), cada
 una con su grilla y sus muebles. Se crean, renombran y eliminan desde
 Modo diseño.
 
+## La oficina tiene vida
+
+Los agentes tienen cuerpo y caminan: cuando no tienen tarea van a la
+cocina (cafetera, heladera, dispenser), riegan las plantas o pasan a mirar
+el **cuadro del agente del mes** (quien más tareas terminó el mes pasado —
+los demás compiten por el lugar). Cuando les cae una tarea grande van a
+buscar dos cafés. Las tazas en cada escritorio son las tareas que le
+pediste ese mes. Todo sale de datos reales del bot; ver "Vida en la
+oficina" en `CLAUDE.md`.
+
 ## El estado vivo
 
 Lo que cada escritorio muestra (tarea, "te pregunta algo", cuándo reportó)

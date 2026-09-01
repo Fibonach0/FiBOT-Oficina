@@ -191,6 +191,39 @@
   .mueble.gerente { background: linear-gradient(180deg, #4f8455, var(--green)); border-color: var(--green-dark); box-shadow: 0 4px 0 var(--green-dark); }
   .burbuja { position: absolute; top: 4px; right: 6px; background: var(--orange); color: #fff; font-size: .66rem; font-weight: 700; padding: 3px 7px; border-radius: 10px 10px 10px 2px; box-shadow: 0 2px 4px rgba(0,0,0,.2); z-index: 2; animation: respirar 3.4s ease-in-out infinite; }
 
+  /* ── vida en la oficina: tazas, corona, cuadro, peeps que caminan ── */
+  .tazas { position: absolute; left: -2px; bottom: -6px; display: flex; gap: 1px; align-items: flex-end; z-index: 2; }
+  .tazas svg { width: 13px; height: 13px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+  .tazas .mas { font-size: .6rem; font-weight: 800; color: #fff; background: var(--wood-dark); border-radius: 6px; padding: 0 4px; line-height: 13px; }
+  .tecleando { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 3px; }
+  .tecleando i { width: 4px; height: 4px; border-radius: 50%; background: #9ec5a3; animation: tecla 1s ease-in-out infinite; }
+  .tecleando i:nth-child(2) { animation-delay: .2s; } .tecleando i:nth-child(3) { animation-delay: .4s; }
+  @keyframes tecla { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .corona { margin-left: 4px; }
+  .cuadro { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .cuadro-marco { width: 64px; height: 64px; border: 5px solid #b8923a; border-radius: 4px; background: #fbf5e6; box-shadow: 0 3px 0 #8a6d2f, inset 0 0 0 2px #e8cf86; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .cuadro-marco .avatar { width: 48px; height: 48px; }
+  .cuadro-marco.vacio { color: var(--muted); font-size: .62rem; text-align: center; padding: 4px; }
+  .cuadro-marco .trofeo { position: absolute; right: 2px; bottom: 0; font-size: .9rem; }
+  .cuadro-nombre { font-size: .62rem; font-weight: 800; margin-top: 3px; text-align: center; line-height: 1.1; max-width: 130px; }
+  .cuadro-nombre small { display: block; font-weight: 600; color: var(--muted); }
+  .capa-vida { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .peep { position: absolute; width: 56px; display: flex; flex-direction: column; align-items: center; transition: none; will-change: transform; }
+  .peep .avatar { width: 40px; height: 40px; margin-bottom: -10px; position: relative; z-index: 1; }
+  .peep-cuerpo { width: 40px; height: 44px; display: block; filter: drop-shadow(0 3px 2px rgba(0,0,0,.18)); }
+  .peep-cuerpo .pierna { transform-origin: 50% 0; transform-box: fill-box; }
+  .peep.caminando .pierna-i { animation: paso 0.5s ease-in-out infinite; }
+  .peep.caminando .pierna-d { animation: paso 0.5s ease-in-out infinite reverse; }
+  .peep.caminando .peep-cuerpo, .peep.caminando .avatar { animation: trote 0.5s ease-in-out infinite; }
+  @keyframes paso { 0%, 100% { transform: rotate(22deg); } 50% { transform: rotate(-22deg); } }
+  @keyframes trote { 0%, 100% { translate: 0 0; } 50% { translate: 0 -2px; } }
+  .peep.mirando-izq .avatar, .peep.mirando-izq .peep-cuerpo { transform: scaleX(-1); }
+  .peep-burbuja { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); background: #fff; border: 2px solid var(--wood-dark); border-radius: 10px 10px 10px 2px; padding: 2px 7px; font-size: .74rem; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,.18); opacity: 0; transition: opacity .2s; }
+  .peep.hablando .peep-burbuja { opacity: 1; }
+  .peep-mano { position: absolute; right: -4px; top: 30px; font-size: .95rem; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); display: none; }
+  .peep.llevando .peep-mano { display: block; }
+  @media (prefers-reduced-motion: reduce) { .capa-vida { display: none; } }
+
   .etiqueta { font-weight: 800; font-size: .78rem; margin-top: 4px; text-align: center; white-space: nowrap; }
   .etiqueta.vacio { color: var(--muted); font-weight: 600; }
 
@@ -568,6 +601,8 @@ const PALETA = [
   { tipo: "reloj", nombre: "Reloj" },
   { tipo: "archivero", nombre: "Archivero" },
   { tipo: "dispenser", nombre: "Dispenser" },
+  { tipo: "heladera", nombre: "Heladera (snacks)" },
+  { tipo: "cuadro", nombre: "Cuadro: agente del mes" },
   { tipo: "impresora", nombre: "Impresora" },
   { tipo: "muro", nombre: "Muro (pincel)" },
   { tipo: "puerta", nombre: "Puerta" },
@@ -679,6 +714,20 @@ const DECO_SVG = {
     <path d="M14 18 Q14 6 20 5 Q26 6 26 18 Z" fill="#7fc3e6" stroke="#5aa6cf" stroke-width="1.5"/>
     <rect x="17" y="24" width="6" height="4" rx="1" fill="#2f5233"/>
     <rect x="18" y="29" width="4" height="3" rx="1" fill="#e0793c"/>
+  </svg>`,
+  heladera: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="11" y="4" width="18" height="32" rx="3" fill="#e9ecef" stroke="#b9c0c7" stroke-width="2"/>
+    <line x1="11" y1="16" x2="29" y2="16" stroke="#b9c0c7" stroke-width="2"/>
+    <rect x="25" y="8" width="2" height="5" rx="1" fill="#7f8891"/>
+    <rect x="25" y="19" width="2" height="8" rx="1" fill="#7f8891"/>
+    <rect x="14" y="20" width="6" height="3" rx="1" fill="#e0793c"/>
+    <rect x="14" y="25" width="6" height="3" rx="1" fill="#2f5233"/>
+  </svg>`,
+  cuadro: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="6" width="24" height="24" rx="2" fill="#fbf5e6" stroke="#b8923a" stroke-width="3"/>
+    <circle cx="20" cy="16" r="5" fill="#e0793c"/>
+    <path d="M12 27 Q20 19 28 27 Z" fill="#2f5233"/>
+    <text x="27" y="34" font-size="9">🏆</text>
   </svg>`,
   impresora: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
     <rect x="8" y="16" width="24" height="14" rx="3" fill="#5b584f"/>
@@ -798,7 +847,7 @@ function programarEstado() {
   if (!OFICINA_API) return; // la muestra estática no cambia sola
   setInterval(async () => {
     const nuevo = await cargarEstado();
-    if (nuevo) { ESTADO = nuevo; render(); }
+    if (nuevo) { ESTADO = nuevo; vidaEstadoNuevo(); render(); }
   }, ESTADO_CADA_MS);
 }
 
@@ -957,6 +1006,7 @@ function render() {
   tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "") + (modoDiseno && PINCELES.has(herramientaArmada) ? " pincel-" + herramientaArmada : "");
   tablero.innerHTML = "";
   LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
+  montarVida();
   renderSalas();
   renderPaleta();
   renderSeleccion();
@@ -980,13 +1030,17 @@ function elementoDe(obj) {
     const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
     const vivo = agente ? estadoVivoDe(agente.id) : null;
     const burbuja = vivo && vivo.estado === "esperando_dueno" ? `<div class="burbuja" title="${(vivo.pregunta || "").replace(/"/g, "&quot;")}">te pregunta algo</div>` : "";
+    const fuera = agente && vidaEstaFuera(agente.id); // salió a la cocina: silla vacía
+    const tazas = agente ? tazasDe(agente.id) : 0;
+    const tecleando = vivo && vivo.estado === "en_curso" && !fuera ? `<div class="tecleando"><i></i><i></i><i></i></div>` : "";
+    const corona = agente && esAgenteDelMes(agente.id) ? `<span class="corona" title="Agente del mes">🏆</span>` : "";
     el.innerHTML = `
       ${burbuja}
       <div class="cuerpo" ${giro}>
-        <div class="avatar-wrap">${agente ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
-        <div class="mueble${agente ? "" : " vacio"}${agente && agente.gerente ? " gerente" : ""}"></div>
+        <div class="avatar-wrap">${agente && !fuera ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
+        <div class="mueble${agente ? "" : " vacio"}${agente && agente.gerente ? " gerente" : ""}">${tecleando}${tazasHTML(tazas)}</div>
       </div>
-      <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
+      <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}${corona}</div>
     `;
   } else if (obj.tipo === "muro") {
     el.classList.add("estructura");
@@ -1005,6 +1059,12 @@ function elementoDe(obj) {
         : `<div class="asiento asiento-${i} vacio"></div>`;
     }).join("");
     el.innerHTML = `<div class="isla"><div class="isla-mesa"></div>${html}<div class="etiqueta isla-etiqueta${nombres.length ? "" : " vacio"}">${nombres.length ? nombres.join(" · ") : "Isla libre"}</div></div>`;
+  } else if (obj.tipo === "cuadro") {
+    const adm = ESTADO && ESTADO.agente_del_mes;
+    const ag = adm ? AGENTES.find((a) => a.id === adm.id) : null;
+    el.innerHTML = ag
+      ? `<div class="cuadro"><div class="cuadro-marco" title="${adm.tareas} tarea${adm.tareas === 1 ? "" : "s"} ${adm.provisional ? "hasta ahora en" : "en"} ${adm.mes}">${avatarParaAgente(ag)}<span class="trofeo">🏆</span></div><div class="cuadro-nombre">${ag.nombre} <small>${adm.provisional ? "va ganando" : "agente del mes"}</small></div></div>`
+      : `<div class="cuadro"><div class="cuadro-marco vacio">Agente del mes<br>(todavía nadie)</div></div>`;
   } else {
     el.innerHTML = `<div class="cuerpo" ${giro}><div class="deco">${DECO_SVG[obj.tipo] || ""}</div></div>`;
   }
@@ -1404,7 +1464,14 @@ async function abrirPanel(agente) {
   badge.className = "badge badge-" + info.clase;
   document.getElementById("panel-actualizado").textContent = vivo && vivo.actualizado ? "reportó " + tiempoRelativo(vivo.actualizado) : "sin reporte";
   document.getElementById("panel-tarea").textContent = vivo && vivo.tarea ? vivo.tarea : "Sin tarea reportada.";
-  document.getElementById("panel-detalle").textContent = vivo && vivo.detalle ? vivo.detalle : "";
+  const nTazas = tazasDe(agente.id);
+  const adm = ESTADO && ESTADO.agente_del_mes;
+  const extraDetalle = [
+    vivo && vivo.detalle ? vivo.detalle : "",
+    agente.gerente && adm ? `🏆 Agente del mes (${adm.mes}${adm.provisional ? ", va ganando" : ""}): ${adm.nombre}, ${adm.tareas} tarea${adm.tareas === 1 ? "" : "s"}.` : "",
+    !agente.gerente && nTazas ? `☕ ${nTazas} tarea${nTazas === 1 ? "" : "s"} este mes${esAgenteDelMes(agente.id) ? " · 🏆 agente del mes" : ""}.` : "",
+  ].filter(Boolean).join(" ");
+  document.getElementById("panel-detalle").textContent = extraDetalle;
   const preg = document.getElementById("panel-pregunta");
   if (vivo && vivo.estado === "esperando_dueno" && vivo.pregunta) {
     preg.innerHTML = `<strong>Está esperando de vos:</strong> ${vivo.pregunta.replace(/</g, "&lt;")}`;
@@ -1453,7 +1520,7 @@ document.getElementById("form-pedido").addEventListener("submit", async (e) => {
     nota.textContent = r && r.respuesta ? r.respuesta : "Enviado. FiBOT te avisa por Telegram y acá cuando haya novedades.";
     texto.value = "";
     const nuevo = await cargarEstado();
-    if (nuevo) { ESTADO = nuevo; render(); }
+    if (nuevo) { ESTADO = nuevo; vidaEstadoNuevo(); render(); }
   } catch (err) {
     nota.textContent = err.message;
   } finally {
@@ -1480,6 +1547,244 @@ document.addEventListener("keydown", (e) => {
 
 // La oficina (y sus fetch de agents/layout/avatares) recién arranca cuando la
 // puerta dejó pasar — ver mostrarOficina(). Antes de eso no se carga nada.
+// ---------- vida en la oficina ----------
+// Los agentes tienen cuerpo y caminan: cuando no tienen tarea van a la cocina
+// (cafetera, heladera, dispenser), riegan las plantas, miran el cuadro del
+// agente del mes. Cuando les cae una tarea grande van a buscar dos cafés.
+// Las tazas del escritorio son tareas_mes del backend (una por tarea pedida en
+// el mes); el cuadro sale de agente_del_mes. Todo esto es decorado: no toca
+// datos, y se apaga en modo diseño y con prefers-reduced-motion.
+const VIDA_RAPIDO = new URLSearchParams(location.search).has("vida"); // ?vida → tiempos cortos (pruebas)
+const VIDA = { peeps: {}, capa: null, ultimoTick: 0, raf: 0 };
+const ACTIVIDADES = {
+  cafetera:  [{ icono: "☕", texto: "un cafecito" }, { icono: "☕", texto: "café con leche" }],
+  heladera:  [{ icono: "🍪", texto: "un snack" }, { icono: "🥪", texto: "un sanguchito" }, { icono: "🧉", texto: "mate" }],
+  dispenser: [{ icono: "🥤", texto: "agua" }],
+  planta:    [{ icono: "🪴", texto: "riego la planta" }],
+  sofa:      [{ icono: "😌", texto: "cinco minutos" }],
+  cuadro:    [{ icono: "🏆", texto: "el próximo es mío" }, { icono: "😤", texto: "este mes lo gano" }],
+  pizarra:   [{ icono: "🧠", texto: "pensando…" }],
+};
+const CAMINABLE = new Set(["alfombra", "puerta"]);
+const TAZA_SVG = `<svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg"><path d="M2 4h8v5a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3z" fill="#faf6ef" stroke="#6e4429" stroke-width="1.3"/><path d="M10 5h1.5a1.7 1.7 0 0 1 0 3.4H10" fill="none" stroke="#6e4429" stroke-width="1.3"/><path d="M4.5 1.5q.6 1-.2 2M7 1.5q.6 1-.2 2" stroke="#b5ae9f" stroke-width="1" fill="none" stroke-linecap="round"/></svg>`;
+
+function tazasDe(agenteId) {
+  return (ESTADO && ESTADO.tareas_mes && ESTADO.tareas_mes[agenteId]) || 0;
+}
+function tazasHTML(n) {
+  if (!n) return "";
+  const mostrar = Math.min(n, 5);
+  return `<div class="tazas" title="${n} tarea${n === 1 ? "" : "s"} este mes = ${n} taza${n === 1 ? "" : "s"}">${TAZA_SVG.repeat(mostrar)}${n > 5 ? `<span class="mas">+${n - 5}</span>` : ""}</div>`;
+}
+function esAgenteDelMes(agenteId) {
+  return !!(ESTADO && ESTADO.agente_del_mes && ESTADO.agente_del_mes.id === agenteId);
+}
+function vidaEstaFuera(agenteId) {
+  const p = VIDA.peeps[agenteId];
+  return !!(p && p.modo !== "sentado");
+}
+function cuerpoSVG(color) {
+  return `<svg class="peep-cuerpo" viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
+    <rect class="pierna pierna-i" x="13" y="24" width="6" height="16" rx="2.5" fill="#3a3a44"/>
+    <rect class="pierna pierna-d" x="21" y="24" width="6" height="16" rx="2.5" fill="#3a3a44"/>
+    <rect x="11" y="2" width="18" height="24" rx="6" fill="${color}"/>
+    <rect x="6" y="6" width="5" height="15" rx="2.5" fill="${color}"/>
+    <rect x="29" y="6" width="5" height="15" rx="2.5" fill="${color}"/>
+    <rect x="12" y="38" width="8" height="4" rx="2" fill="#2b2b33"/><rect x="20" y="38" width="8" height="4" rx="2" fill="#2b2b33"/>
+  </svg>`;
+}
+
+function libre(x, y, ocupado) {
+  const { cols, rows } = LAYOUT.grid;
+  return x >= 0 && y >= 0 && x < cols && y < rows && !ocupado.has(x + "," + y);
+}
+function mapaOcupado() {
+  const oc = new Set();
+  LAYOUT.objetos.forEach((o) => { if (!CAMINABLE.has(o.tipo)) oc.add(o.x + "," + o.y); });
+  return oc;
+}
+// BFS en la grilla, 4 vecinos. `desde` puede estar ocupado (es el escritorio propio).
+function camino(desde, hasta, ocupado) {
+  const clave = (c) => c[0] + "," + c[1];
+  const prev = new Map([[clave(desde), null]]);
+  const cola = [desde];
+  while (cola.length) {
+    const c = cola.shift();
+    if (c[0] === hasta[0] && c[1] === hasta[1]) {
+      const ruta = [];
+      for (let cur = c; cur; cur = prev.get(clave(cur))) ruta.unshift(cur);
+      return ruta;
+    }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = [c[0] + dx, c[1] + dy];
+      if (!libre(n[0], n[1], ocupado) || prev.has(clave(n))) continue;
+      prev.set(clave(n), c);
+      cola.push(n);
+    }
+  }
+  return null;
+}
+function celdaJuntoA(obj, ocupado) {
+  const opciones = [[obj.x, obj.y + 1], [obj.x - 1, obj.y], [obj.x + 1, obj.y], [obj.x, obj.y - 1]].filter(([x, y]) => libre(x, y, ocupado));
+  return opciones.length ? opciones[Math.floor(Math.random() * opciones.length)] : null;
+}
+const azar = (a, b) => a + Math.random() * (b - a);
+
+function montarVida() {
+  if (VIDA.capa && VIDA.capa.parentNode) VIDA.capa.remove();
+  if (modoDiseno || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { VIDA.capa = null; return; }
+  VIDA.capa = document.createElement("div");
+  VIDA.capa.className = "capa-vida";
+  tablero.appendChild(VIDA.capa);
+  const vistos = new Set();
+  LAYOUT.objetos.filter((o) => o.tipo === "escritorio" && o.agenteId).forEach((desk) => {
+    const agente = AGENTES.find((a) => a.id === desk.agenteId);
+    if (!agente) return;
+    vistos.add(agente.id);
+    let p = VIDA.peeps[agente.id];
+    if (!p) {
+      p = VIDA.peeps[agente.id] = { agente, modo: "sentado", x: desk.x, y: desk.y, ruta: [], siguienteSalida: performance.now() + (VIDA_RAPIDO ? azar(300, 1200) : azar(8000, 40000)), hasta: 0, tareaVista: null };
+    }
+    p.desk = desk;
+    if (p.modo === "sentado") { p.x = desk.x; p.y = desk.y; }
+    const el = document.createElement("div");
+    el.className = "peep";
+    el.innerHTML = `<div class="peep-burbuja"></div>${avatarParaAgente(agente)}${cuerpoSVG(agente.color)}<span class="peep-mano"></span>`;
+    el.style.display = p.modo === "sentado" ? "none" : "";
+    if (p.modo === "yendo" || p.modo === "volviendo") el.classList.add("caminando");
+    if (p.modo === "volviendo" && p.motivo === "cafe-doble") { el.classList.add("llevando"); el.querySelector(".peep-mano").textContent = "☕☕"; }
+    if (p.modo === "actividad" && p.burbuja && p.burbuja.hasta > performance.now()) { el.querySelector(".peep-burbuja").textContent = p.burbuja.texto; el.classList.add("hablando"); }
+    p.el = el;
+    VIDA.capa.appendChild(el);
+    posicionarPeep(p);
+  });
+  Object.keys(VIDA.peeps).forEach((id) => { if (!vistos.has(id)) delete VIDA.peeps[id]; });
+  if (!VIDA.raf) VIDA.raf = requestAnimationFrame(tickVida);
+}
+function posicionarPeep(p) {
+  const { cell } = LAYOUT.grid;
+  p.el.style.transform = `translate(${p.x * cell + cell / 2 - 28}px, ${p.y * cell + cell / 2 - 44}px)`;
+}
+function decirPeep(p, icono, texto, ms) {
+  p.burbuja = { texto: `${icono} ${texto}`, hasta: performance.now() + ms };
+  p.el.querySelector(".peep-burbuja").textContent = p.burbuja.texto;
+  p.el.classList.add("hablando");
+  setTimeout(() => p.el && p.el.classList.remove("hablando"), ms);
+}
+// Tarea grande: a buscar dos cafés antes de sentarse a laburar.
+function irPorCafes(p) {
+  const ocupado = mapaOcupado();
+  const cafetera = LAYOUT.objetos.find((o) => o.tipo === "cafetera");
+  if (!cafetera) return false;
+  const celda = celdaJuntoA(cafetera, ocupado);
+  const ruta = celda && camino([p.desk.x, p.desk.y], celda, ocupado);
+  if (!(ruta && ruta.length > 1)) return false;
+  salirPeep(p, { obj: cafetera, celda, ruta, icono: "☕☕", texto: "dos cafés" }, "cafe-doble");
+  return true;
+}
+function estadoVivoPeep(p) {
+  const v = estadoVivoDe(p.agente.id);
+  return v ? v.estado : (p.agente.estado === "activo" ? "inactivo" : "inactivo");
+}
+function elegirActividad(p, ocupado) {
+  const candidatos = LAYOUT.objetos.filter((o) => ACTIVIDADES[o.tipo] && !(o.tipo === "cuadro" && esAgenteDelMes(p.agente.id)));
+  for (let i = 0; i < 6 && candidatos.length; i++) {
+    const obj = candidatos[Math.floor(Math.random() * candidatos.length)];
+    const celda = celdaJuntoA(obj, ocupado);
+    if (!celda) continue;
+    const ruta = camino([p.desk.x, p.desk.y], celda, ocupado);
+    if (ruta && ruta.length > 1) {
+      const opciones = ACTIVIDADES[obj.tipo];
+      return { obj, celda, ruta, ...opciones[Math.floor(Math.random() * opciones.length)] };
+    }
+  }
+  return null;
+}
+function salirPeep(p, act, motivo) {
+  p.modo = "yendo"; p.act = act; p.ruta = act.ruta.slice(1); p.motivo = motivo;
+  p.el.style.display = "";
+  p.el.classList.add("caminando");
+  // la silla queda vacía mientras está afuera
+  const av = tablero.querySelector(`.objeto[data-id="${p.desk.id}"] .avatar-wrap`);
+  if (av) av.innerHTML = sillaVaciaSVG();
+}
+function volverPeep(p) {
+  const ocupado = mapaOcupado();
+  const ruta = camino([Math.round(p.x), Math.round(p.y)], [p.desk.x, p.desk.y], new Set([...ocupado].filter((k) => k !== p.desk.x + "," + p.desk.y)));
+  p.modo = "volviendo"; p.ruta = ruta ? ruta.slice(1) : [[p.desk.x, p.desk.y]];
+  p.el.classList.remove("llevando"); p.el.classList.add("caminando");
+  if (p.motivo === "cafe-doble") { p.el.classList.add("llevando"); p.el.querySelector(".peep-mano").textContent = "☕☕"; }
+}
+function sentarPeep(p) {
+  p.modo = "sentado"; p.x = p.desk.x; p.y = p.desk.y; p.ruta = [];
+  p.el.classList.remove("caminando", "llevando", "mirando-izq");
+  p.el.style.display = "none";
+  const av = tablero.querySelector(`.objeto[data-id="${p.desk.id}"] .avatar-wrap`);
+  if (av) av.innerHTML = avatarParaAgente(p.agente);
+  p.siguienteSalida = performance.now() + (VIDA_RAPIDO ? azar(1000, 3000) : azar(20000, 90000));
+}
+function tickVida(ts) {
+  VIDA.raf = 0;
+  if (!VIDA.capa || modoDiseno) return;
+  const dt = Math.min(0.1, (ts - (VIDA.ultimoTick || ts)) / 1000);
+  VIDA.ultimoTick = ts;
+  const velocidad = VIDA_RAPIDO ? 6 : 2.2; // celdas por segundo
+  const ocupado = mapaOcupado();
+  for (const p of Object.values(VIDA.peeps)) {
+    if (!p.el || !p.desk) continue;
+    const estado = estadoVivoPeep(p);
+    if (p.modo === "sentado") {
+      if (p.cafePendiente) { p.cafePendiente = false; irPorCafes(p); continue; }
+      const ocioso = !["en_curso", "esperando_dueno"].includes(estado);
+      if (ocioso && ts >= p.siguienteSalida) {
+        const act = elegirActividad(p, ocupado);
+        if (act) salirPeep(p, act, "ocio"); else p.siguienteSalida = ts + 30000;
+      }
+      continue;
+    }
+    if (p.modo === "actividad") {
+      if (ts >= p.hasta) volverPeep(p);
+      continue;
+    }
+    // caminando (yendo / volviendo)
+    if (!p.ruta.length) {
+      if (p.modo === "yendo") {
+        p.modo = "actividad"; p.el.classList.remove("caminando");
+        p.hasta = ts + (VIDA_RAPIDO ? azar(800, 1500) : azar(4000, 9000));
+        decirPeep(p, p.motivo === "cafe-doble" ? "☕☕" : p.act.icono, p.motivo === "cafe-doble" ? "dos cafés, va a ser largo" : p.act.texto, p.hasta - ts);
+      } else {
+        sentarPeep(p);
+      }
+      continue;
+    }
+    const [tx, ty] = p.ruta[0];
+    const dx = tx - p.x, dy = ty - p.y;
+    const dist = Math.hypot(dx, dy);
+    const paso = velocidad * dt;
+    if (dist <= paso) { p.x = tx; p.y = ty; p.ruta.shift(); }
+    else { p.x += (dx / dist) * paso; p.y += (dy / dist) * paso; }
+    if (Math.abs(dx) > 0.01) p.el.classList.toggle("mirando-izq", dx < 0);
+    posicionarPeep(p);
+  }
+  VIDA.raf = requestAnimationFrame(tickVida);
+}
+// Llega un estado nuevo: si a alguien le cayó una tarea grande (nueva y con
+// despacho, o con detalle largo) va a buscar dos cafés antes de sentarse a laburar.
+function vidaEstadoNuevo() {
+  if (!ESTADO || !ESTADO.agentes) return;
+  for (const p of Object.values(VIDA.peeps)) {
+    const v = ESTADO.agentes[p.agente.id];
+    const marca = v ? (v.id || v.tarea) : null;
+    const nueva = marca && p.tareaVista !== null && p.tareaVista !== marca;
+    p.tareaVista = marca;
+    if (!nueva || !v || v.estado !== "en_curso" || !p.desk) continue;
+    const grande = !!v.link || (v.detalle || "").length > 80 || (v.tarea || "").length > 60;
+    if (!grande) continue;
+    // si está afuera, va por los cafés apenas vuelve a la silla
+    if (p.modo !== "sentado") p.cafePendiente = true; else irPorCafes(p);
+  }
+}
+
 async function iniciar() {
   try {
     AGENTES = await cargarAgentes();
@@ -1501,6 +1806,7 @@ async function iniciar() {
   }
   actualizarPie();
   activarSala(localStorage.getItem(CLAVE_SALA)); // si no existe, cae a la primera
+  vidaEstadoNuevo(); // deja anotada la tarea actual de cada uno (sin disparar cafés)
 }
 
 (async function arranque() {

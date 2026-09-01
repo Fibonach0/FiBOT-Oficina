@@ -194,6 +194,44 @@ Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
 genera un layout mínimo con un escritorio por agente en fila — la página
 nunca queda en blanco por falta de ese archivo.
 
+## Vida en la oficina — cuerpos, cocina, tazas y el agente del mes
+
+Pedido de Nacho: que los agentes tengan cuerpo y anden por la oficina. Es
+**decorado sobre datos reales**, no una simulación con estado propio:
+
+- **Cuerpo**: la cabeza es el Open Peeps de siempre; el cuerpo es un SVG
+  propio (`cuerpoSVG`, remera del color del agente, piernas que se
+  alternan con CSS mientras camina). Los peeps viven en `#capa-vida`
+  (`pointer-events: none`, arriba de los muebles); cuando uno sale, su
+  escritorio muestra la silla vacía.
+- **Qué hacen**: si no tienen tarea (`inactivo`/`pendiente`/`hecha` o sin
+  reporte) cada 20–90 s eligen una actividad de `ACTIVIDADES` según los
+  muebles que haya en la sala: cafetera, heladera (snacks), dispenser,
+  planta (la riegan), sofá, pizarra, y el **cuadro** — al que sólo van los
+  que NO son el agente del mes, a decir "el próximo es mío". Van por BFS
+  en la grilla (`camino`), sin atravesar muebles ni muros; alfombra y
+  puerta son transitables. Los que están `en_curso` o `esperando_dueno`
+  se quedan sentados (los `en_curso` con tres puntitos "tecleando").
+- **Tarea grande** (llega un estado nuevo con tarea distinta, `en_curso`,
+  y con link de despacho o detalle largo): van a la cafetera, dicen "dos
+  cafés, va a ser largo" y vuelven con ☕☕ en la mano. Si estaban afuera,
+  queda `cafePendiente` y lo hacen al sentarse.
+- **Tazas en el escritorio** = `tareas_mes[id]` del backend (una por
+  tarea pedida en el mes; hasta 5 dibujadas y después `+N`). No es un
+  contador local: si se recarga, se ve lo mismo.
+- **Agente del mes** = `agente_del_mes` del backend (quien más terminó el
+  mes pasado; `provisional` = el que va ganando este). Se ve en el mueble
+  `cuadro` (marco con su avatar) y como 🏆 en la etiqueta de su
+  escritorio; el panel de FiBOT lo nombra.
+- **Se apaga** en modo diseño (`montarVida` no monta la capa) y con
+  `prefers-reduced-motion`. `?vida` en la URL acorta todos los tiempos —
+  es para las pruebas de Playwright, no un modo de uso.
+
+Lección: `render()` recrea todo el DOM (también en cada refresco de
+estado), así que los peeps guardan su estado en `VIDA.peeps` y
+`montarVida` vuelve a derivar clases y burbuja de ahí — cualquier cosa que
+se ponga sólo en el elemento se pierde al minuto.
+
 ## Avatares — Open Peeps, y nada más
 
 Un solo estilo, por decisión de Nacho (hubo un selector con Lorelei y Pixel

@@ -107,6 +107,24 @@
           "x": 7,
           "y": 4,
           "agenteId": "casa"
+        },
+        {
+          "id": "cuadro-1",
+          "tipo": "cuadro",
+          "x": 6,
+          "y": 0
+        },
+        {
+          "id": "heladera-1",
+          "tipo": "heladera",
+          "x": 6,
+          "y": 6
+        },
+        {
+          "id": "dispenser-1",
+          "tipo": "dispenser",
+          "x": 7,
+          "y": 6
         }
       ]
     }
