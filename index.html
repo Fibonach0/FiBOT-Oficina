@@ -196,15 +196,15 @@
 
   /* isla: mesa redonda con hasta 4 asientos alrededor */
   .isla { position: relative; width: 100%; height: 100%; }
-  .isla-mesa { position: absolute; left: 50%; top: 46%; width: 56px; height: 56px; transform: translate(-50%, -50%); border-radius: 50%; background: linear-gradient(180deg, #b98452, var(--wood)); border: 3px solid var(--wood-dark); box-shadow: 0 4px 0 var(--wood-dark); }
-  .asiento { position: absolute; width: 36px; height: 36px; }
-  .asiento .avatar { width: 36px; height: 36px; }
+  .isla-mesa { position: absolute; left: 50%; top: 42%; width: 52px; height: 52px; transform: translate(-50%, -50%); border-radius: 50%; background: linear-gradient(180deg, #b98452, var(--wood)); border: 3px solid var(--wood-dark); box-shadow: 0 4px 0 var(--wood-dark); }
+  .asiento { position: absolute; width: 34px; height: 34px; }
+  .asiento .avatar { width: 34px; height: 34px; }
   .asiento.vacio { border: 2px dashed rgba(110,68,41,.35); border-radius: 50%; }
-  .asiento-0 { top: 4px; left: 50%; transform: translateX(-50%); }
-  .asiento-1 { right: 10px; top: 46%; transform: translateY(-50%); }
-  .asiento-2 { bottom: 22px; left: 50%; transform: translateX(-50%); }
-  .asiento-3 { left: 10px; top: 46%; transform: translateY(-50%); }
-  .isla-etiqueta { position: absolute; bottom: 2px; left: 0; right: 0; font-size: .68rem; white-space: normal; line-height: 1.1; }
+  .asiento-0 { top: 2px; left: 50%; transform: translateX(-50%); }
+  .asiento-1 { right: 12px; top: 42%; transform: translateY(-50%); }
+  .asiento-2 { bottom: 26px; left: 50%; transform: translateX(-50%); }
+  .asiento-3 { left: 12px; top: 42%; transform: translateY(-50%); }
+  .isla-etiqueta { position: absolute; bottom: 4px; left: 4px; right: 4px; font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .asiento-label { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
   .modo-diseno.pincel-muro, .modo-diseno.pincel-goma { cursor: crosshair; }
   .modo-diseno.pincel-muro .objeto, .modo-diseno.pincel-goma .objeto { cursor: crosshair; }
