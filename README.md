@@ -28,6 +28,15 @@ La oficina puede tener **varias salas** (pestañas arriba del piso), cada
 una con su grilla y sus muebles. Se crean, renombran y eliminan desde
 Modo diseño.
 
+## Carteles y apariencia
+
+Los **carteles** son pizarras que abren un sitio al hacerles click (Railway,
+la flota de Cantarini, el hub, GitHub…); se agregan y editan desde Modo
+diseño (título, link, emoji opcional). Desde el panel de cualquier agente,
+**Editar apariencia** abre un editor de Open Peeps (peinado, cara, anteojos,
+piel, ropa) que se guarda en tu navegador; "Descargar avatares.json" lo
+vuelve oficial, igual que el layout.
+
 ## La oficina tiene vida
 
 Los agentes tienen cuerpo y caminan: cuando no tienen tarea van a la
