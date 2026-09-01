@@ -1,5 +1,5 @@
 {
-  "_readme": "Roster de la oficina. Cada agente es una línea de trabajo real de Nacho, no un proceso corriendo 24/7 — ver CLAUDE.md sobre esa distinción. 'estado' es libre (activo/pausa/bloqueado); 'nota' se actualiza a mano por ahora.",
+  "_readme": "Roster de la oficina. Cada agente es una línea de trabajo real de Nacho, no un proceso corriendo 24/7 — ver CLAUDE.md sobre esa distinción. 'estado' es libre (activo/pausa/bloqueado); 'nota' se actualiza a mano. 'repo' (opcional, 'owner/nombre') sólo va en repos PÚBLICOS: habilita el commit más reciente en vivo en el panel de detalle vía la API pública de GitHub. Nunca ponerlo en un repo privado — un fetch sin auth desde el navegador de cualquiera le pegaría un 404, y si algún día hiciera falta autenticarlo NO va un token acá (este archivo lo sirve un sitio público).",
   "agentes": [
     {
       "id": "prospeccion",
@@ -19,7 +19,8 @@
       "estado": "activo",
       "nota": "MVP + página pública de reserva por slug ya mergeados. Falta cargar Meta WhatsApp y la key de Supabase para el primer tenant real.",
       "link": "https://github.com/Fibonach0/FiBOT-Consultorio",
-      "link_label": "Ver repo"
+      "link_label": "Ver repo",
+      "repo": "Fibonach0/FiBOT-Consultorio"
     },
     {
       "id": "farmacia",

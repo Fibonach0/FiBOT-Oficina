@@ -16,6 +16,8 @@
     --ink: #1c1b19;
     --muted: #5b584f;
     --green: #2f5233;
+    --green-dark: #223d26;
+    --orange: #e0793c;
     --rule: #d8cfb6;
     --wood: #8a5a3a;
     --wood-dark: #6e4429;
@@ -31,9 +33,9 @@
     padding: 18px 24px;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
   }
   header h1 {
     font-family: "VT323", monospace;
@@ -43,146 +45,186 @@
     color: var(--green);
   }
   header p { margin: 0; color: var(--muted); font-size: .92rem; }
+  .cabecera-textos { display: flex; flex-direction: column; gap: 2px; }
 
-  .piso {
-    position: relative;
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-size: .88rem;
+    font-weight: 600;
+  }
+  .btn.secundario { background: #fff; color: var(--green); border: 1px solid var(--green); }
+  .btn.peligro { background: #fff; color: var(--orange); border: 1px solid var(--orange); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .barra-acciones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .escena {
+    display: flex;
+    gap: 18px;
     margin: 0 24px 32px;
-    border-radius: 14px;
-    border: 3px solid var(--wood-dark);
-    overflow: hidden;
-    background-image:
-      repeating-linear-gradient(45deg, var(--floor-a) 0 24px, var(--floor-b) 24px 48px);
-    box-shadow: inset 0 0 0 6px var(--wood);
-    min-height: 420px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 28px;
-    padding: 40px;
-    align-items: start;
+    align-items: flex-start;
   }
 
-  .escritorio {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-family: inherit;
-    color: inherit;
+  /* -------- paleta (sólo modo diseño) -------- */
+  .paleta {
+    width: 168px;
+    flex: none;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px;
+    display: none;
+  }
+  .paleta.visible { display: block; }
+  .paleta h3 { margin: 0 0 10px; font-size: .95rem; }
+  .paleta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: var(--cream);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 7px 8px;
+    margin-bottom: 6px;
+    font-size: .82rem;
+    text-align: left;
+  }
+  .paleta-item:hover { border-color: var(--rule); }
+  .paleta-item.armado { border-color: var(--green); background: #eef3ec; }
+  .paleta-item svg { width: 26px; height: 26px; flex: none; }
+  .paleta-ayuda { font-size: .74rem; color: var(--muted); margin-top: 10px; line-height: 1.35; }
+
+  .panel-seleccion {
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 12px;
+    font-size: .85rem;
+  }
+  .panel-seleccion h4 { margin: 0 0 8px; font-size: .88rem; }
+  .panel-seleccion select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--rule); margin-bottom: 8px; }
+
+  /* -------- tablero -------- */
+  .tablero-envoltorio { overflow: auto; border-radius: 14px; border: 3px solid var(--wood-dark); box-shadow: inset 0 0 0 6px var(--wood); flex: 1; }
+  .tablero {
+    position: relative;
+    background-image: repeating-linear-gradient(45deg, var(--floor-a) 0 24px, var(--floor-b) 24px 48px);
+  }
+  .tablero.modo-diseno {
+    background-image:
+      linear-gradient(rgba(110,68,41,.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(110,68,41,.35) 1px, transparent 1px),
+      repeating-linear-gradient(45deg, var(--floor-a) 0 24px, var(--floor-b) 24px 48px);
+    background-repeat: repeat, repeat, repeat;
+  }
+
+  .objeto {
+    position: absolute;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    justify-content: flex-end;
+    user-select: none;
+    touch-action: none;
   }
-  .escritorio:focus-visible .mueble { outline: 3px solid var(--green); outline-offset: 3px; }
+  .modo-diseno .objeto { cursor: grab; }
+  .modo-diseno .objeto:active { cursor: grabbing; }
+  .objeto.arrastrando { opacity: .55; z-index: 20; }
+  .objeto.seleccionado::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border: 2px dashed var(--green);
+    border-radius: 10px;
+    pointer-events: none;
+  }
 
   .avatar-wrap { animation: respirar 3.4s ease-in-out infinite; }
-  @keyframes respirar {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  }
-  .avatar { width: 58px; height: 58px; display: block; filter: drop-shadow(0 3px 2px rgba(0,0,0,.18)); }
+  @keyframes respirar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  .avatar { width: 46px; height: 46px; display: block; filter: drop-shadow(0 3px 2px rgba(0,0,0,.18)); }
 
   .mueble {
-    width: 128px;
-    height: 70px;
+    position: relative;
+    width: 96px;
+    height: 56px;
     background: linear-gradient(180deg, #b98452, var(--wood));
     border: 3px solid var(--wood-dark);
     border-radius: 8px;
-    position: relative;
     box-shadow: 0 4px 0 var(--wood-dark);
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .mueble::before {
-    content: "";
-    width: 46px; height: 30px;
-    background: #2b2f33;
-    border-radius: 3px;
-    box-shadow: inset 0 0 0 3px #4a5560;
-  }
-  .mueble::after {
-    content: "";
-    position: absolute;
-    top: 6px; right: 8px;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-  }
+  .mueble::before { content: ""; width: 36px; height: 24px; background: #2b2f33; border-radius: 3px; box-shadow: inset 0 0 0 3px #4a5560; }
+  .mueble.vacio { background: linear-gradient(180deg, #d8cdb9, #c7b99b); box-shadow: 0 4px 0 #a8987a; }
+  .mueble.vacio::before { background: #9a8f7d; box-shadow: none; }
+  .mueble::after { content: ""; position: absolute; top: 5px; right: 6px; width: 8px; height: 8px; border-radius: 50%; }
   .estado-activo .mueble::after { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
   .estado-pausa .mueble::after { background: #d8b23a; }
-  .estado-bloqueado .mueble::after { background: #c1652f; }
+  .estado-bloqueado .mueble::after { background: var(--orange); }
 
-  .placa {
-    font-weight: 800;
-    font-size: .95rem;
-    margin-top: 2px;
-  }
-  .nota-corta {
-    font-size: .78rem;
-    color: var(--muted);
-    text-align: center;
-    max-width: 170px;
-    line-height: 1.25;
-  }
+  .etiqueta { font-weight: 800; font-size: .78rem; margin-top: 4px; text-align: center; white-space: nowrap; }
+  .etiqueta.vacio { color: var(--muted); font-weight: 600; }
 
-  /* panel de detalle */
-  .fondo-modal {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(28,27,25,.45);
-    align-items: center; justify-content: center;
-    padding: 20px;
-    z-index: 10;
-  }
+  .deco { display: flex; align-items: flex-end; justify-content: center; height: 100%; }
+  .deco svg { width: 54px; height: 54px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.15)); }
+
+  /* -------- panel de detalle (modo oficina) -------- */
+  .fondo-modal { display: none; position: fixed; inset: 0; background: rgba(28,27,25,.45); align-items: center; justify-content: center; padding: 20px; z-index: 30; }
   .fondo-modal.abierto { display: flex; }
-  .panel {
-    background: #fff;
-    border-radius: 12px;
-    border: 1px solid var(--rule);
-    max-width: 420px;
-    width: 100%;
-    padding: 22px 24px;
-    position: relative;
-  }
+  .panel { background: #fff; border-radius: 12px; border: 1px solid var(--rule); max-width: 420px; width: 100%; padding: 22px 24px; position: relative; }
   .panel h2 { margin: 4px 0 2px; }
   .panel .rol { color: var(--muted); font-size: .9rem; margin-bottom: 12px; }
   .panel .nota { line-height: 1.45; }
-  .panel a.btn {
-    display: inline-block;
-    margin-top: 16px;
-    background: var(--green);
-    color: #fff;
-    text-decoration: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-size: .9rem;
-  }
-  .cerrar {
-    position: absolute; top: 10px; right: 12px;
-    background: none; border: none; font-size: 1.3rem;
-    cursor: pointer; color: var(--muted);
-  }
+  .panel .commit { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--rule); font-size: .82rem; color: var(--muted); }
+  .panel .commit strong { color: var(--ink); }
+  .panel a.btn { display: inline-block; margin-top: 16px; text-decoration: none; }
+  .cerrar { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted); }
   .panel .avatar { width: 44px; height: 44px; }
 
-  footer {
-    text-align: center;
-    color: var(--muted);
-    font-size: .8rem;
-    padding: 10px 20px 30px;
-  }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 10px 20px 30px; }
 </style>
 </head>
 <body>
 <header>
-  <div>
+  <div class="cabecera-textos">
     <h1>Oficina FiBOT</h1>
-    <p>Panel personal — en qué anda cada frente, de un vistazo.</p>
+    <p id="subtitulo">Panel personal — en qué anda cada frente, de un vistazo.</p>
+  </div>
+  <div class="barra-acciones">
+    <button class="btn secundario" id="btn-modo">Modo diseño</button>
+    <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
+    <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
   </div>
 </header>
 
-<main class="piso" id="piso" aria-label="Oficina, un escritorio por agente"></main>
+<div class="escena">
+  <aside class="paleta" id="paleta">
+    <h3>Muebles</h3>
+    <div id="lista-paleta"></div>
+    <div class="panel-seleccion" id="panel-seleccion" style="display:none;">
+      <h4>Seleccionado</h4>
+      <div id="sel-asignar"></div>
+      <button class="btn peligro" id="btn-eliminar" style="width:100%;">Eliminar</button>
+    </div>
+    <p class="paleta-ayuda">Elegí un mueble y hacé click en el piso para colocarlo. Arrastrá lo ya puesto para moverlo. Los escritorios se le asignan a un agente desde acá.</p>
+  </aside>
 
-<footer>oficina.fibot.ar · datos cargados a mano por ahora, ver <code>agents.json</code></footer>
+  <div class="tablero-envoltorio">
+    <div class="tablero" id="tablero"></div>
+  </div>
+</div>
+
+<footer>oficina.fibot.ar · <span id="pie-estado">cargando…</span></footer>
 
 <div class="fondo-modal" id="fondo-modal">
   <div class="panel" id="panel" role="dialog" aria-modal="true">
@@ -191,21 +233,106 @@
     <h2 id="panel-nombre"></h2>
     <p class="rol" id="panel-rol"></p>
     <p class="nota" id="panel-nota"></p>
+    <p class="commit" id="panel-commit" style="display:none;"></p>
     <a class="btn" id="panel-link" target="_blank" rel="noopener"></a>
   </div>
 </div>
 
 <script>
-function avatarSVG(color, extraClass) {
-  return `
-    <svg class="avatar${extraClass ? ' ' + extraClass : ''}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="20" cy="34" rx="13" ry="6" fill="${color}"/>
-      <circle cx="20" cy="16" r="11" fill="${color}"/>
-      <circle cx="16" cy="15" r="1.6" fill="#1c1b19"/>
-      <circle cx="24" cy="15" r="1.6" fill="#1c1b19"/>
-      <path d="M15 20 Q20 24 25 20" stroke="#1c1b19" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-    </svg>`;
+const CLAVE_LOCAL = "fibot-oficina-layout-v1";
+
+const PALETA = [
+  { tipo: "escritorio", nombre: "Escritorio" },
+  { tipo: "planta", nombre: "Planta" },
+  { tipo: "estanteria", nombre: "Estantería" },
+  { tipo: "sofa", nombre: "Sofá" },
+  { tipo: "cafetera", nombre: "Cafetera" },
+  { tipo: "pizarra", nombre: "Pizarrón" },
+  { tipo: "alfombra", nombre: "Alfombra" },
+  { tipo: "pared", nombre: "Divisor" },
+];
+
+let AGENTES = [];
+let LAYOUT = null;
+let layoutEsLocal = false;
+let modoDiseno = false;
+let herramientaArmada = null;
+let seleccionId = null;
+let arrastre = null; // {id, offsetX, offsetY, movio}
+
+// ---------- avatares y decorados (SVG propio, ver CLAUDE.md sobre licencias) ----------
+
+function avatarSVG(color) {
+  return `<svg class="avatar" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="20" cy="34" rx="13" ry="6" fill="${color}"/>
+    <circle cx="20" cy="16" r="11" fill="${color}"/>
+    <circle cx="16" cy="15" r="1.6" fill="#1c1b19"/>
+    <circle cx="24" cy="15" r="1.6" fill="#1c1b19"/>
+    <path d="M15 20 Q20 24 25 20" stroke="#1c1b19" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>`;
 }
+
+function sillaVaciaSVG() {
+  return `<svg class="avatar" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" opacity=".55">
+    <rect x="12" y="10" width="16" height="16" rx="3" fill="none" stroke="#8a5a3a" stroke-width="2.5"/>
+    <path d="M14 26 L12 34 M26 26 L28 34 M14 30 H26" stroke="#8a5a3a" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>`;
+}
+
+const DECO_SVG = {
+  planta: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 30 L16 20 L24 20 L26 30 Z" fill="#c1652f"/>
+    <ellipse cx="20" cy="16" rx="3" ry="9" fill="#2f5233" transform="rotate(-20 20 16)"/>
+    <ellipse cx="20" cy="16" rx="3" ry="9" fill="#3d6b43" transform="rotate(20 20 16)"/>
+    <ellipse cx="20" cy="13" rx="3" ry="8" fill="#4f8455"/>
+  </svg>`,
+  estanteria: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="7" y="6" width="26" height="28" rx="2" fill="#8a5a3a" stroke="#6e4429" stroke-width="2"/>
+    <rect x="9" y="12" width="22" height="2.5" fill="#6e4429"/>
+    <rect x="9" y="21" width="22" height="2.5" fill="#6e4429"/>
+    <rect x="11" y="8" width="3" height="3.5" fill="#e0793c"/>
+    <rect x="15" y="8" width="3" height="3.5" fill="#2f5233"/>
+    <rect x="19" y="8" width="3" height="3.5" fill="#d8b23a"/>
+    <rect x="11" y="14.5" width="3" height="6" fill="#5b584f"/>
+    <rect x="15" y="14.5" width="3" height="6" fill="#e0793c"/>
+  </svg>`,
+  sofa: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="18" width="30" height="12" rx="4" fill="#2f5233"/>
+    <rect x="7" y="12" width="9" height="10" rx="3" fill="#3d6b43"/>
+    <rect x="17" y="12" width="9" height="10" rx="3" fill="#3d6b43"/>
+    <rect x="27" y="12" width="6" height="10" rx="3" fill="#3d6b43"/>
+    <rect x="4" y="20" width="4" height="12" rx="2" fill="#223d26"/>
+    <rect x="32" y="20" width="4" height="12" rx="2" fill="#223d26"/>
+  </svg>`,
+  cafetera: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="16" width="16" height="16" rx="2" fill="#5b584f"/>
+    <rect x="15" y="10" width="10" height="7" rx="1.5" fill="#3a3834"/>
+    <circle cx="20" cy="24" r="3" fill="#e0793c"/>
+    <path d="M16 6 Q17 9 16 11 M20 5 Q21 8 20 10 M24 6 Q25 9 24 11" stroke="#c7bfae" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>`,
+  pizarra: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="8" width="30" height="20" rx="2" fill="#faf6ef" stroke="#8a5a3a" stroke-width="3"/>
+    <path d="M10 16 Q14 12 18 16 T28 15" stroke="#e0793c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <path d="M10 21 H22" stroke="#2f5233" stroke-width="1.8" stroke-linecap="round"/>
+    <rect x="9" y="29" width="22" height="3" rx="1.5" fill="#6e4429"/>
+  </svg>`,
+  alfombra: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="10" width="32" height="20" rx="3" fill="#c1652f"/>
+    <rect x="8" y="14" width="24" height="12" rx="2" fill="none" stroke="#faf6ef" stroke-width="1.6"/>
+    <rect x="12" y="18" width="16" height="4" fill="#e0793c"/>
+  </svg>`,
+  pared: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="4" width="12" height="34" rx="2" fill="#8a5a3a" stroke="#6e4429" stroke-width="2"/>
+    <rect x="14" y="4" width="12" height="6" fill="#b98452"/>
+  </svg>`,
+};
+
+function paletaIconoSVG(tipo) {
+  if (tipo === "escritorio") return `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="16" width="28" height="16" rx="2" fill="#8a5a3a"/><rect x="11" y="19" width="18" height="10" rx="1.5" fill="#2b2f33"/></svg>`;
+  return DECO_SVG[tipo] || "";
+}
+
+// ---------- carga de datos ----------
 
 async function cargarAgentes() {
   const res = await fetch("agents.json", { cache: "no-store" });
@@ -213,20 +340,328 @@ async function cargarAgentes() {
   return data.agentes;
 }
 
-function crearEscritorio(agente) {
-  const btn = document.createElement("button");
-  btn.className = `escritorio estado-${agente.estado}`;
-  btn.innerHTML = `
-    <div class="avatar-wrap">${avatarSVG(agente.color)}</div>
-    <div class="mueble"></div>
-    <div class="placa">${agente.nombre}</div>
-    <div class="nota-corta">${agente.nota}</div>
-  `;
-  btn.addEventListener("click", () => abrirPanel(agente));
-  return btn;
+function layoutPorDefecto() {
+  const cols = 10, rows = 6, cell = 140;
+  const objetos = AGENTES.map((a, i) => ({
+    id: "desk-" + a.id, tipo: "escritorio", x: 1 + i * 2, y: 2, agenteId: a.id,
+  }));
+  return { grid: { cols, rows, cell }, objetos };
 }
 
-function abrirPanel(agente) {
+async function cargarLayoutOficial() {
+  try {
+    const res = await fetch("layout.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("sin layout.json");
+    const data = await res.json();
+    return { grid: data.grid, objetos: data.objetos };
+  } catch (e) {
+    return layoutPorDefecto();
+  }
+}
+
+function cargarLayoutLocal() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_LOCAL);
+    if (!crudo) return null;
+    return JSON.parse(crudo);
+  } catch (e) {
+    return null;
+  }
+}
+
+function guardarLocal() {
+  localStorage.setItem(CLAVE_LOCAL, JSON.stringify(LAYOUT));
+  layoutEsLocal = true;
+  actualizarPie();
+}
+
+// ---------- render ----------
+
+const tablero = document.getElementById("tablero");
+
+function render() {
+  const { cols, rows, cell } = LAYOUT.grid;
+  tablero.style.width = cols * cell + "px";
+  tablero.style.height = rows * cell + "px";
+  tablero.style.backgroundSize = `${cell}px ${cell}px, ${cell}px ${cell}px, 68px 68px`;
+  tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "");
+  tablero.innerHTML = "";
+  LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
+  renderPaleta();
+  renderSeleccion();
+}
+
+function elementoDe(obj) {
+  const { cell } = LAYOUT.grid;
+  const el = document.createElement("div");
+  const estado = obj.tipo === "escritorio" ? estadoDe(obj) : null;
+  el.className = "objeto" + (obj.id === seleccionId ? " seleccionado" : "") + (estado ? " estado-" + estado : "");
+  el.style.left = obj.x * cell + "px";
+  el.style.top = obj.y * cell + "px";
+  el.style.width = cell + "px";
+  el.style.height = cell + "px";
+  el.dataset.id = obj.id;
+
+  if (obj.tipo === "escritorio") {
+    const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+    el.innerHTML = `
+      <div class="avatar-wrap">${agente ? avatarSVG(agente.color) : sillaVaciaSVG()}</div>
+      <div class="mueble${agente ? "" : " vacio"}"></div>
+      <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
+    `;
+  } else {
+    el.innerHTML = `<div class="deco">${DECO_SVG[obj.tipo] || ""}</div>`;
+  }
+
+  el.addEventListener("pointerdown", (e) => onPointerDown(e, obj));
+  el.addEventListener("click", (e) => onClickObjeto(e, obj));
+  return el;
+}
+
+function estadoDe(obj) {
+  const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+  return agente ? agente.estado : null;
+}
+
+function renderPaleta() {
+  const paleta = document.getElementById("paleta");
+  paleta.classList.toggle("visible", modoDiseno);
+  const lista = document.getElementById("lista-paleta");
+  lista.innerHTML = "";
+  PALETA.forEach((p) => {
+    const b = document.createElement("button");
+    b.className = "paleta-item" + (herramientaArmada === p.tipo ? " armado" : "");
+    b.innerHTML = `${paletaIconoSVG(p.tipo)}<span>${p.nombre}</span>`;
+    b.addEventListener("click", () => {
+      herramientaArmada = herramientaArmada === p.tipo ? null : p.tipo;
+      seleccionId = null;
+      render();
+    });
+    lista.appendChild(b);
+  });
+}
+
+function renderSeleccion() {
+  const caja = document.getElementById("panel-seleccion");
+  if (!modoDiseno || !seleccionId) { caja.style.display = "none"; return; }
+  const obj = LAYOUT.objetos.find((o) => o.id === seleccionId);
+  if (!obj) { caja.style.display = "none"; return; }
+  caja.style.display = "block";
+  const cajaAsignar = document.getElementById("sel-asignar");
+  if (obj.tipo === "escritorio") {
+    const opciones = ['<option value="">— libre —</option>']
+      .concat(AGENTES.map((a) => `<option value="${a.id}" ${a.id === obj.agenteId ? "selected" : ""}>${a.nombre}</option>`));
+    cajaAsignar.innerHTML = `<select id="sel-agente">${opciones.join("")}</select>`;
+    document.getElementById("sel-agente").addEventListener("change", (e) => {
+      obj.agenteId = e.target.value || null;
+      guardarLocal();
+      render();
+    });
+  } else {
+    cajaAsignar.innerHTML = "";
+  }
+}
+
+function actualizarPie() {
+  document.getElementById("pie-estado").textContent = layoutEsLocal
+    ? "estás viendo tu boceto local (guardado sólo en este navegador)"
+    : "vista oficial (layout.json)";
+}
+
+// ---------- interacción: colocar / seleccionar / arrastrar ----------
+
+function celdaLibre(x, y, ignorarId) {
+  return !LAYOUT.objetos.some((o) => o.x === x && o.y === y && o.id !== ignorarId);
+}
+
+function idNuevo(tipo) {
+  return tipo + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+tablero.addEventListener("click", (e) => {
+  if (e.target !== tablero) return; // clicks en objetos los maneja onClickObjeto
+  if (!modoDiseno || !herramientaArmada) {
+    seleccionId = null;
+    render();
+    return;
+  }
+  const rect = tablero.getBoundingClientRect();
+  const { cell, cols, rows } = LAYOUT.grid;
+  const x = Math.floor((e.clientX - rect.left) / cell);
+  const y = Math.floor((e.clientY - rect.top) / cell);
+  if (x < 0 || y < 0 || x >= cols || y >= rows) return;
+  if (!celdaLibre(x, y)) return;
+  const obj = { id: idNuevo(herramientaArmada), tipo: herramientaArmada, x, y };
+  if (herramientaArmada === "escritorio") obj.agenteId = null;
+  LAYOUT.objetos.push(obj);
+  seleccionId = obj.id;
+  guardarLocal();
+  render();
+});
+
+function onClickObjeto(e, obj) {
+  e.stopPropagation();
+  if (arrastre && arrastre.movio) return; // fue un drag, no un click
+  if (!modoDiseno) {
+    if (obj.tipo === "escritorio" && obj.agenteId) {
+      const agente = AGENTES.find((a) => a.id === obj.agenteId);
+      if (agente) abrirPanel(agente);
+    }
+    return;
+  }
+  herramientaArmada = null;
+  seleccionId = obj.id;
+  render();
+}
+
+function onPointerDown(e, obj) {
+  if (!modoDiseno) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+  const rect = tablero.getBoundingClientRect();
+  arrastre = {
+    id: obj.id,
+    obj,
+    el,
+    startX: e.clientX,
+    startY: e.clientY,
+    origX: obj.x,
+    origY: obj.y,
+    rect,
+    movio: false,
+  };
+  el.addEventListener("pointermove", onPointerMove);
+  el.addEventListener("pointerup", onPointerUp);
+}
+
+function onPointerMove(e) {
+  if (!arrastre) return;
+  const { cell } = LAYOUT.grid;
+  const dx = e.clientX - arrastre.startX;
+  const dy = e.clientY - arrastre.startY;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) arrastre.movio = true;
+  if (!arrastre.movio) return;
+  arrastre.el.classList.add("arrastrando");
+  const nuevoLeft = (arrastre.origX * cell) + dx;
+  const nuevoTop = (arrastre.origY * cell) + dy;
+  arrastre.el.style.left = Math.max(0, nuevoLeft) + "px";
+  arrastre.el.style.top = Math.max(0, nuevoTop) + "px";
+}
+
+function onPointerUp(e) {
+  if (!arrastre) return;
+  const a = arrastre;
+  a.el.removeEventListener("pointermove", onPointerMove);
+  a.el.removeEventListener("pointerup", onPointerUp);
+  a.el.classList.remove("arrastrando");
+
+  if (a.movio) {
+    const { cell, cols, rows } = LAYOUT.grid;
+    const dx = e.clientX - a.startX;
+    const dy = e.clientY - a.startY;
+    let x = Math.round((a.origX * cell + dx) / cell);
+    let y = Math.round((a.origY * cell + dy) / cell);
+    x = Math.min(Math.max(x, 0), cols - 1);
+    y = Math.min(Math.max(y, 0), rows - 1);
+    if (celdaLibre(x, y, a.id)) {
+      a.obj.x = x;
+      a.obj.y = y;
+      guardarLocal();
+    }
+    seleccionId = a.id;
+    render();
+  }
+  // si no se movió, onClickObjeto ya se encarga (dispara después de pointerup)
+  setTimeout(() => { arrastre = null; }, 0);
+}
+
+document.addEventListener("keydown", (e) => {
+  if (!modoDiseno || !seleccionId) return;
+  if (e.key === "Delete" || e.key === "Backspace") {
+    eliminarSeleccion();
+  } else if (e.key === "Escape") {
+    seleccionId = null;
+    herramientaArmada = null;
+    render();
+  }
+});
+
+function eliminarSeleccion() {
+  if (!seleccionId) return;
+  LAYOUT.objetos = LAYOUT.objetos.filter((o) => o.id !== seleccionId);
+  seleccionId = null;
+  guardarLocal();
+  render();
+}
+document.getElementById("btn-eliminar").addEventListener("click", eliminarSeleccion);
+
+// ---------- modo diseño on/off ----------
+
+document.getElementById("btn-modo").addEventListener("click", () => {
+  modoDiseno = !modoDiseno;
+  herramientaArmada = null;
+  seleccionId = null;
+  document.getElementById("btn-modo").textContent = modoDiseno ? "Salir del modo diseño" : "Modo diseño";
+  document.getElementById("btn-exportar").style.display = modoDiseno ? "inline-block" : "none";
+  document.getElementById("btn-resetear").style.display = modoDiseno ? "inline-block" : "none";
+  document.getElementById("subtitulo").textContent = modoDiseno
+    ? "Modo diseño — arrastrá, soltá, armá tu oficina."
+    : "Panel personal — en qué anda cada frente, de un vistazo.";
+  render();
+});
+
+document.getElementById("btn-exportar").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(LAYOUT, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "layout.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("btn-resetear").addEventListener("click", async () => {
+  if (!confirm("Esto descarta tu boceto local y vuelve al layout.json oficial. ¿Seguir?")) return;
+  localStorage.removeItem(CLAVE_LOCAL);
+  layoutEsLocal = false;
+  LAYOUT = await cargarLayoutOficial();
+  seleccionId = null;
+  actualizarPie();
+  render();
+});
+
+// ---------- panel de detalle + commit en vivo ----------
+
+const cacheCommits = {};
+
+async function obtenerUltimoCommit(repo) {
+  if (cacheCommits[repo]) return cacheCommits[repo];
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=1`);
+    if (!res.ok) throw new Error("no disponible");
+    const data = await res.json();
+    const c = data[0];
+    const info = { mensaje: c.commit.message.split("\n")[0], fecha: c.commit.author.date };
+    cacheCommits[repo] = info;
+    return info;
+  } catch (e) {
+    return null;
+  }
+}
+
+function tiempoRelativo(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 60) return `hace ${min} min`;
+  const hs = Math.round(min / 60);
+  if (hs < 24) return `hace ${hs} h`;
+  const dias = Math.round(hs / 24);
+  return `hace ${dias} d`;
+}
+
+async function abrirPanel(agente) {
   document.getElementById("panel-avatar-wrap").innerHTML = avatarSVG(agente.color);
   document.getElementById("panel-nombre").textContent = agente.nombre;
   document.getElementById("panel-rol").textContent = agente.rol;
@@ -234,7 +669,17 @@ function abrirPanel(agente) {
   const link = document.getElementById("panel-link");
   link.href = agente.link;
   link.textContent = agente.link_label || "Ver más";
+  const commit = document.getElementById("panel-commit");
+  commit.style.display = "none";
   document.getElementById("fondo-modal").classList.add("abierto");
+
+  if (agente.repo) {
+    const info = await obtenerUltimoCommit(agente.repo);
+    if (info) {
+      commit.innerHTML = `Último commit (en vivo): <strong>${info.mensaje}</strong> — ${tiempoRelativo(info.fecha)}`;
+      commit.style.display = "block";
+    }
+  }
 }
 
 document.getElementById("cerrar").addEventListener("click", () => {
@@ -247,12 +692,26 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") document.getElementById("fondo-modal").classList.remove("abierto");
 });
 
-cargarAgentes().then((agentes) => {
-  const piso = document.getElementById("piso");
-  agentes.forEach((a) => piso.appendChild(crearEscritorio(a)));
-}).catch((err) => {
-  document.getElementById("piso").textContent = "No se pudo cargar agents.json: " + err.message;
-});
+// ---------- arranque ----------
+
+(async function iniciar() {
+  try {
+    AGENTES = await cargarAgentes();
+  } catch (e) {
+    document.getElementById("tablero").textContent = "No se pudo cargar agents.json: " + e.message;
+    return;
+  }
+  const local = cargarLayoutLocal();
+  if (local) {
+    LAYOUT = local;
+    layoutEsLocal = true;
+  } else {
+    LAYOUT = await cargarLayoutOficial();
+    layoutEsLocal = false;
+  }
+  actualizarPie();
+  render();
+})();
 </script>
 </body>
 </html>
