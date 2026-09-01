@@ -103,6 +103,9 @@
   .paleta-item.armado { border-color: var(--green); background: #eef3ec; }
   .paleta-item svg { width: 26px; height: 26px; flex: none; }
   .paleta-ayuda { font-size: .74rem; color: var(--muted); margin-top: 10px; line-height: 1.35; }
+  .titulo-grilla { margin: 12px 0 6px; font-size: .88rem; }
+  .grilla-controles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grilla-controles button { font-size: .78rem; padding: 6px 4px; }
 
   .panel-seleccion {
     background: #fff;
@@ -177,6 +180,7 @@
   .etiqueta { font-weight: 800; font-size: .78rem; margin-top: 4px; text-align: center; white-space: nowrap; }
   .etiqueta.vacio { color: var(--muted); font-weight: 600; }
 
+  .cuerpo { display: flex; flex-direction: column; align-items: center; transform-origin: 50% 60%; transition: transform .15s ease; }
   .deco { display: flex; align-items: flex-end; justify-content: center; height: 100%; }
   .deco svg { width: 54px; height: 54px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.15)); }
 
@@ -247,9 +251,17 @@
   <aside class="paleta" id="paleta">
     <h3>Muebles</h3>
     <div id="lista-paleta"></div>
+    <h4 class="titulo-grilla">Piso</h4>
+    <div class="grilla-controles">
+      <button class="btn secundario" data-grilla="cols" data-delta="1" title="Agregar columna">+ col</button>
+      <button class="btn secundario" data-grilla="cols" data-delta="-1" title="Sacar la última columna (si está vacía)">− col</button>
+      <button class="btn secundario" data-grilla="rows" data-delta="1" title="Agregar fila">+ fila</button>
+      <button class="btn secundario" data-grilla="rows" data-delta="-1" title="Sacar la última fila (si está vacía)">− fila</button>
+    </div>
     <div class="panel-seleccion" id="panel-seleccion" style="display:none;">
       <h4>Seleccionado</h4>
       <div id="sel-asignar"></div>
+      <button class="btn secundario" id="btn-rotar" style="width:100%; margin-bottom:8px;">Rotar (R)</button>
       <button class="btn peligro" id="btn-eliminar" style="width:100%;">Eliminar</button>
     </div>
     <p class="paleta-ayuda">Elegí un mueble y hacé click en el piso para colocarlo. Arrastrá lo ya puesto para moverlo. Los escritorios se le asignan a un agente desde acá.</p>
@@ -426,6 +438,11 @@ const PALETA = [
   { tipo: "pizarra", nombre: "Pizarrón" },
   { tipo: "alfombra", nombre: "Alfombra" },
   { tipo: "pared", nombre: "Divisor" },
+  { tipo: "ventana", nombre: "Ventana" },
+  { tipo: "reloj", nombre: "Reloj" },
+  { tipo: "archivero", nombre: "Archivero" },
+  { tipo: "dispenser", nombre: "Dispenser" },
+  { tipo: "impresora", nombre: "Impresora" },
 ];
 
 let AGENTES = [];
@@ -500,6 +517,37 @@ const DECO_SVG = {
   pared: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
     <rect x="14" y="4" width="12" height="34" rx="2" fill="#8a5a3a" stroke="#6e4429" stroke-width="2"/>
     <rect x="14" y="4" width="12" height="6" fill="#b98452"/>
+  </svg>`,
+  ventana: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="6" width="28" height="28" rx="2" fill="#bfe0ef" stroke="#8a5a3a" stroke-width="3"/>
+    <path d="M20 6 V34 M6 20 H34" stroke="#8a5a3a" stroke-width="2.5"/>
+    <path d="M9 12 L15 9" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+  </svg>`,
+  reloj: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="20" r="14" fill="#faf6ef" stroke="#6e4429" stroke-width="3"/>
+    <path d="M20 20 V11 M20 20 L26 24" stroke="#1c1b19" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="20" cy="20" r="1.6" fill="#e0793c"/>
+  </svg>`,
+  archivero: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="5" width="20" height="30" rx="2" fill="#5b584f" stroke="#3a3834" stroke-width="2"/>
+    <rect x="12" y="8" width="16" height="7" rx="1" fill="#6e6a60"/>
+    <rect x="12" y="17" width="16" height="7" rx="1" fill="#6e6a60"/>
+    <rect x="12" y="26" width="16" height="7" rx="1" fill="#6e6a60"/>
+    <rect x="17" y="10.5" width="6" height="2" rx="1" fill="#d8cfb6"/>
+    <rect x="17" y="19.5" width="6" height="2" rx="1" fill="#d8cfb6"/>
+    <rect x="17" y="28.5" width="6" height="2" rx="1" fill="#d8cfb6"/>
+  </svg>`,
+  dispenser: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="13" y="18" width="14" height="18" rx="2" fill="#faf6ef" stroke="#c7bfae" stroke-width="2"/>
+    <path d="M14 18 Q14 6 20 5 Q26 6 26 18 Z" fill="#7fc3e6" stroke="#5aa6cf" stroke-width="1.5"/>
+    <rect x="17" y="24" width="6" height="4" rx="1" fill="#2f5233"/>
+    <rect x="18" y="29" width="4" height="3" rx="1" fill="#e0793c"/>
+  </svg>`,
+  impresora: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="16" width="24" height="14" rx="3" fill="#5b584f"/>
+    <rect x="12" y="8" width="16" height="10" rx="1" fill="#faf6ef" stroke="#c7bfae" stroke-width="1.5"/>
+    <rect x="11" y="27" width="18" height="6" rx="1" fill="#faf6ef"/>
+    <circle cx="28" cy="21" r="1.6" fill="#4caf50"/>
   </svg>`,
 };
 
@@ -631,15 +679,20 @@ function elementoDe(obj) {
   el.style.height = cell + "px";
   el.dataset.id = obj.id;
 
+  // `rot` (0/90/180/270) rota sólo el cuerpo (avatar + mueble, o el decorado):
+  // la etiqueta con el nombre queda siempre derecha para que se pueda leer.
+  const giro = `style="transform: rotate(${obj.rot || 0}deg)"`;
   if (obj.tipo === "escritorio") {
     const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
     el.innerHTML = `
-      <div class="avatar-wrap">${agente ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
-      <div class="mueble${agente ? "" : " vacio"}"></div>
+      <div class="cuerpo" ${giro}>
+        <div class="avatar-wrap">${agente ? avatarParaAgente(agente) : sillaVaciaSVG()}</div>
+        <div class="mueble${agente ? "" : " vacio"}"></div>
+      </div>
       <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
     `;
   } else {
-    el.innerHTML = `<div class="deco">${DECO_SVG[obj.tipo] || ""}</div>`;
+    el.innerHTML = `<div class="cuerpo" ${giro}><div class="deco">${DECO_SVG[obj.tipo] || ""}</div></div>`;
   }
 
   el.addEventListener("pointerdown", (e) => onPointerDown(e, obj));
@@ -808,8 +861,13 @@ function onPointerUp(e) {
 
 document.addEventListener("keydown", (e) => {
   if (!modoDiseno || !seleccionId) return;
+  // Con el foco en un input/select (ej. el de asignar agente), las teclas son
+  // para ese control — que un Backspace ahí no borre el mueble seleccionado.
+  if (["INPUT", "SELECT", "TEXTAREA"].includes((e.target.tagName || "").toUpperCase())) return;
   if (e.key === "Delete" || e.key === "Backspace") {
     eliminarSeleccion();
+  } else if (e.key === "r" || e.key === "R") {
+    rotarSeleccion();
   } else if (e.key === "Escape") {
     seleccionId = null;
     herramientaArmada = null;
@@ -825,6 +883,36 @@ function eliminarSeleccion() {
   render();
 }
 document.getElementById("btn-eliminar").addEventListener("click", eliminarSeleccion);
+
+function rotarSeleccion() {
+  const obj = LAYOUT.objetos.find((o) => o.id === seleccionId);
+  if (!obj) return;
+  obj.rot = ((obj.rot || 0) + 90) % 360;
+  guardarLocal();
+  render();
+}
+document.getElementById("btn-rotar").addEventListener("click", rotarSeleccion);
+
+// Agrandar/achicar el piso. Achicar sólo si la última columna/fila está vacía —
+// nunca se pierde un mueble por tocar un botón de más.
+document.querySelectorAll("[data-grilla]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const eje = b.dataset.grilla; // "cols" | "rows"
+    const delta = Number(b.dataset.delta);
+    const nuevo = LAYOUT.grid[eje] + delta;
+    if (nuevo < 3 || nuevo > 30) return;
+    if (delta < 0) {
+      const coord = eje === "cols" ? "x" : "y";
+      if (LAYOUT.objetos.some((o) => o[coord] >= nuevo)) {
+        alert("Esa " + (eje === "cols" ? "columna" : "fila") + " tiene muebles — movelos o borralos antes de achicar.");
+        return;
+      }
+    }
+    LAYOUT.grid[eje] = nuevo;
+    guardarLocal();
+    render();
+  });
+});
 
 // ---------- modo diseño on/off ----------
 

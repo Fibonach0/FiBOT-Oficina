@@ -76,9 +76,21 @@ Botón "Modo diseño" en el header. Con la paleta abierta: elegís un mueble,
 click en una celda libre del piso para colocarlo; arrastrás (pointer events,
 mouse y touch) lo ya puesto para moverlo; `Delete`/`Backspace` borra la
 selección; un escritorio seleccionado tiene un `<select>` para asignarle (o
-sacarle) un agente. Todo en una sola grilla de celdas de 1×1 — nada de
-rotación ni de muebles de más de una celda en esta v1, a propósito, para que
-la lógica de colisión/arrastre sea trivial y no tenga bugs de bordes.
+sacarle) un agente. **Rotar (R)** gira el mueble seleccionado de a 90°
+(`rot` en el objeto, opcional, default 0) — rota sólo el cuerpo, la
+etiqueta con el nombre queda derecha para que se lea. Botones **+/− col** y
+**+/− fila** agrandan o achican el piso (3 a 30 celdas por lado); achicar
+sólo se permite si la última columna/fila está vacía, nunca se pierde un
+mueble por un click de más. Todo en una grilla de celdas de 1×1 — nada de
+muebles de más de una celda, a propósito, para que la lógica de
+colisión/arrastre sea trivial y no tenga bugs de bordes. Las teclas
+(Delete, R, Escape) se ignoran si el foco está en un input o select — que un
+Backspace en el desplegable de agente no borre el escritorio.
+
+Muebles disponibles (todos SVG propio, `DECO_SVG`): escritorio, planta,
+estantería, sofá, cafetera, pizarrón, alfombra, divisor, ventana, reloj,
+archivero, dispenser, impresora. Sumar uno es agregar una entrada en
+`PALETA` y otra en `DECO_SVG`, nada más.
 
 **Persistencia, y por qué es así:** cada cambio se guarda solo en
 `localStorage` del navegador de quien está diseñando (`guardarLocal()`) — no
