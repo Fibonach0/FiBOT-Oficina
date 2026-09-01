@@ -104,6 +104,30 @@ estantería, sofá, cafetera, pizarrón, alfombra, divisor, ventana, reloj,
 archivero, dispenser, impresora. Sumar uno es agregar una entrada en
 `PALETA` y otra en `DECO_SVG`, nada más.
 
+**Muros, puertas, islas y goma** (pedido de Nacho: oficinas privadas e
+islas con escritorios compartidos):
+
+- **Muro (pincel)**: no se coloca por click, se *pinta* arrastrando. Los
+  pinceles (`PINCELES`) se enganchan en fase de captura sobre el tablero
+  (`tablero.addEventListener("pointerdown", …, true)`) para ganarle al
+  `pointerdown` de los objetos, que arrancaría un arrastre. Cada muro se
+  dibuja **conectado a sus vecinos** (`muroSVG()` mira N/S/E/O y tira un
+  brazo hacia cada muro o puerta adyacente) — así una hilera se ve como
+  pared continua. No rota: se orienta solo por los vecinos.
+- **Puerta**: hueco con hoja abierta, se coloca por click y se rota con R
+  para ponerla en un muro vertical. Cuenta como vecino para los muros.
+- **Goma**: pincel que borra arrastrando todo lo que **no** sea un
+  escritorio ni una isla (`BORRABLE_CON_GOMA`) — esos tienen agentes
+  asignados y se borran con Delete a conciencia, nunca de un plumazo.
+- **Isla**: mesa redonda con **4 asientos** (arriba/derecha/abajo/
+  izquierda), cada uno asignable a un agente desde el panel de selección
+  (`obj.asientos`, array de 4). En modo oficina, click en la isla lista a
+  los sentados y click en uno abre su panel.
+
+Sigue siendo una grilla de 1×1 — una isla ocupa una celda (140px) con la
+mesa al medio y los avatares chicos alrededor; alcanza y evita toda la
+lógica de muebles multi-celda.
+
 **Persistencia, y por qué es así:** cada cambio se guarda solo en
 `localStorage` del navegador de quien está diseñando (`guardarLocal()`) — no
 hay backend que reciba el diseño en vivo, es un sitio estático. Un diseño en

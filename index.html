@@ -189,6 +189,27 @@
   .deco { display: flex; align-items: flex-end; justify-content: center; height: 100%; }
   .deco svg { width: 54px; height: 54px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.15)); }
 
+  /* muros y puertas ocupan la celda entera */
+  .objeto.estructura, .objeto.estructura .cuerpo { display: block; width: 100%; height: 100%; }
+  .objeto.estructura svg { display: block; width: 100%; height: 100%; }
+  .objeto.estructura.seleccionado::after { inset: 0; border-radius: 4px; }
+
+  /* isla: mesa redonda con hasta 4 asientos alrededor */
+  .isla { position: relative; width: 100%; height: 100%; }
+  .isla-mesa { position: absolute; left: 50%; top: 46%; width: 56px; height: 56px; transform: translate(-50%, -50%); border-radius: 50%; background: linear-gradient(180deg, #b98452, var(--wood)); border: 3px solid var(--wood-dark); box-shadow: 0 4px 0 var(--wood-dark); }
+  .asiento { position: absolute; width: 36px; height: 36px; }
+  .asiento .avatar { width: 36px; height: 36px; }
+  .asiento.vacio { border: 2px dashed rgba(110,68,41,.35); border-radius: 50%; }
+  .asiento-0 { top: 4px; left: 50%; transform: translateX(-50%); }
+  .asiento-1 { right: 10px; top: 46%; transform: translateY(-50%); }
+  .asiento-2 { bottom: 22px; left: 50%; transform: translateX(-50%); }
+  .asiento-3 { left: 10px; top: 46%; transform: translateY(-50%); }
+  .isla-etiqueta { position: absolute; bottom: 2px; left: 0; right: 0; font-size: .68rem; white-space: normal; line-height: 1.1; }
+  .asiento-label { display: block; font-size: .76rem; color: var(--muted); margin-top: 6px; }
+  .modo-diseno.pincel-muro, .modo-diseno.pincel-goma { cursor: crosshair; }
+  .modo-diseno.pincel-muro .objeto, .modo-diseno.pincel-goma .objeto { cursor: crosshair; }
+  .panel .sentado { margin: 6px 6px 0 0; }
+
   /* -------- panel de detalle (modo oficina) -------- */
   .fondo-modal { display: none; position: fixed; inset: 0; background: rgba(28,27,25,.45); align-items: center; justify-content: center; padding: 20px; z-index: 30; }
   .fondo-modal.abierto { display: flex; }
@@ -286,6 +307,7 @@
     <p class="rol" id="panel-rol"></p>
     <p class="nota" id="panel-nota"></p>
     <p class="commit" id="panel-commit" style="display:none;"></p>
+    <div id="panel-extra"></div>
     <a class="btn" id="panel-link" target="_blank" rel="noopener"></a>
   </div>
 </div>
@@ -508,7 +530,17 @@ const PALETA = [
   { tipo: "archivero", nombre: "Archivero" },
   { tipo: "dispenser", nombre: "Dispenser" },
   { tipo: "impresora", nombre: "Impresora" },
+  { tipo: "muro", nombre: "Muro (pincel)" },
+  { tipo: "puerta", nombre: "Puerta" },
+  { tipo: "isla", nombre: "Isla (4 asientos)" },
+  { tipo: "goma", nombre: "Goma (borrar)" },
 ];
+// Herramientas que no colocan un mueble por click sino que se "pintan" arrastrando.
+const PINCELES = new Set(["muro", "goma"]);
+// Lo que la goma puede borrar de un plumazo. Escritorios e islas NO: tienen
+// agentes asignados, se borran con Delete a conciencia.
+const BORRABLE_CON_GOMA = (o) => o.tipo !== "escritorio" && o.tipo !== "isla";
+const ESTRUCTURA = new Set(["muro", "puerta"]); // ocupan la celda entera, sin sombra ni margen
 
 let AGENTES = [];
 let DISENO = null; // { salas: [ {id, nombre, grid, objetos} ] } — el diseño entero
@@ -617,10 +649,43 @@ const DECO_SVG = {
   </svg>`,
 };
 
+const ICONO_HERRAMIENTA = {
+  escritorio: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="16" width="28" height="16" rx="2" fill="#8a5a3a"/><rect x="11" y="19" width="18" height="10" rx="1.5" fill="#2b2f33"/></svg>`,
+  muro: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="15" width="32" height="10" fill="#6e4429"/><rect x="15" y="4" width="10" height="32" fill="#6e4429"/></svg>`,
+  puerta: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="16" width="9" height="8" fill="#6e4429"/><rect x="29" y="16" width="9" height="8" fill="#6e4429"/><path d="M11 20 V6" stroke="#b98452" stroke-width="4" stroke-linecap="round"/><path d="M11 6 A14 14 0 0 1 25 20" stroke="#8a5a3a" stroke-width="1.5" fill="none" stroke-dasharray="2 2"/></svg>`,
+  isla: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="9" fill="#8a5a3a" stroke="#6e4429" stroke-width="2"/><circle cx="20" cy="5" r="3.5" fill="#e0793c"/><circle cx="35" cy="20" r="3.5" fill="#2f5233"/><circle cx="20" cy="35" r="3.5" fill="#c1652f"/><circle cx="5" cy="20" r="3.5" fill="#5b584f"/></svg>`,
+  goma: `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="14" width="24" height="14" rx="3" fill="#e0793c" transform="rotate(-30 20 21)"/><rect x="8" y="14" width="10" height="14" rx="3" fill="#faf6ef" transform="rotate(-30 20 21)"/></svg>`,
+};
 function paletaIconoSVG(tipo) {
-  if (tipo === "escritorio") return `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="16" width="28" height="16" rx="2" fill="#8a5a3a"/><rect x="11" y="19" width="18" height="10" rx="1.5" fill="#2b2f33"/></svg>`;
-  return DECO_SVG[tipo] || "";
+  return ICONO_HERRAMIENTA[tipo] || DECO_SVG[tipo] || "";
 }
+
+// Muro: se dibuja conectado a los muros/puertas vecinos (N/S/E/O) para que una
+// hilera pintada con el pincel se vea como una pared continua, no como cubitos.
+function muroSVG(obj) {
+  const hay = (dx, dy) => LAYOUT.objetos.some((o) => ESTRUCTURA.has(o.tipo) && o.x === obj.x + dx && o.y === obj.y + dy);
+  const n = hay(0, -1), s = hay(0, 1), e = hay(1, 0), w = hay(-1, 0);
+  const g = 24, a = 50 - g / 2; // grosor y arranque
+  let partes = "";
+  if (n) partes += `<rect x="${a}" y="0" width="${g}" height="${50 + g / 2}" fill="#6e4429"/>`;
+  if (s) partes += `<rect x="${a}" y="${a}" width="${g}" height="${50 + g / 2}" fill="#6e4429"/>`;
+  if (e) partes += `<rect x="${a}" y="${a}" width="${50 + g / 2}" height="${g}" fill="#6e4429"/>`;
+  if (w) partes += `<rect x="0" y="${a}" width="${50 + g / 2}" height="${g}" fill="#6e4429"/>`;
+  partes += (!n && !s && !e && !w)
+    ? `<rect x="${a}" y="14" width="${g}" height="72" rx="4" fill="#6e4429"/>`
+    : `<rect x="${a}" y="${a}" width="${g}" height="${g}" fill="#6e4429"/>`;
+  // línea de luz arriba para que tenga volumen
+  partes += `<rect x="${a + 3}" y="${a + 3}" width="${g - 6}" height="4" fill="#8a5a3a" opacity=".8"/>`;
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${partes}</svg>`;
+}
+
+// Puerta: hueco en un muro horizontal con la hoja abierta. Se rota con R para
+// ponerla en un muro vertical.
+const PUERTA_SVG = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="38" width="22" height="24" fill="#6e4429"/><rect x="78" y="38" width="22" height="24" fill="#6e4429"/>
+  <path d="M24 50 V8" stroke="#b98452" stroke-width="9" stroke-linecap="round"/>
+  <path d="M24 8 A42 42 0 0 1 66 50" stroke="#8a5a3a" stroke-width="2" fill="none" stroke-dasharray="5 4" opacity=".7"/>
+</svg>`;
 
 // ---------- avatares: Open Peeps (DiceBear, CC0), pre-generados en avatares.json ----------
 // Un solo estilo por decisión de Nacho. El circulito clásico (avatarSVG) queda
@@ -791,7 +856,7 @@ function render() {
   tablero.style.width = cols * cell + "px";
   tablero.style.height = rows * cell + "px";
   tablero.style.backgroundSize = `${cell}px ${cell}px, ${cell}px ${cell}px, 68px 68px`;
-  tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "");
+  tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "") + (modoDiseno && PINCELES.has(herramientaArmada) ? " pincel-" + herramientaArmada : "");
   tablero.innerHTML = "";
   LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
   renderSalas();
@@ -822,6 +887,23 @@ function elementoDe(obj) {
       </div>
       <div class="etiqueta${agente ? "" : " vacio"}">${agente ? agente.nombre : "Libre"}</div>
     `;
+  } else if (obj.tipo === "muro") {
+    el.classList.add("estructura");
+    el.innerHTML = muroSVG(obj); // sin rotación: se orienta solo según los vecinos
+  } else if (obj.tipo === "puerta") {
+    el.classList.add("estructura");
+    el.innerHTML = `<div class="cuerpo" ${giro}>${PUERTA_SVG}</div>`;
+  } else if (obj.tipo === "isla") {
+    const asientos = obj.asientos || [null, null, null, null];
+    const nombres = [];
+    const html = asientos.map((id, i) => {
+      const ag = id ? AGENTES.find((a) => a.id === id) : null;
+      if (ag) nombres.push(ag.nombre);
+      return ag
+        ? `<div class="asiento asiento-${i}" title="${ag.nombre}">${avatarParaAgente(ag)}</div>`
+        : `<div class="asiento asiento-${i} vacio"></div>`;
+    }).join("");
+    el.innerHTML = `<div class="isla"><div class="isla-mesa"></div>${html}<div class="etiqueta isla-etiqueta${nombres.length ? "" : " vacio"}">${nombres.length ? nombres.join(" · ") : "Isla libre"}</div></div>`;
   } else {
     el.innerHTML = `<div class="cuerpo" ${giro}><div class="deco">${DECO_SVG[obj.tipo] || ""}</div></div>`;
   }
@@ -870,6 +952,21 @@ function renderSeleccion() {
       guardarLocal();
       render();
     });
+  } else if (obj.tipo === "isla") {
+    if (!obj.asientos) obj.asientos = [null, null, null, null];
+    const lados = ["arriba", "derecha", "abajo", "izquierda"];
+    cajaAsignar.innerHTML = obj.asientos.map((id, i) => {
+      const opciones = ['<option value="">— libre —</option>']
+        .concat(AGENTES.map((a) => `<option value="${a.id}" ${a.id === id ? "selected" : ""}>${a.nombre}</option>`));
+      return `<label class="asiento-label">Asiento ${lados[i]}<select class="sel-asiento" data-asiento="${i}">${opciones.join("")}</select></label>`;
+    }).join("");
+    cajaAsignar.querySelectorAll(".sel-asiento").forEach((sel) => {
+      sel.addEventListener("change", (e) => {
+        obj.asientos[Number(e.target.dataset.asiento)] = e.target.value || null;
+        guardarLocal();
+        render();
+      });
+    });
   } else {
     cajaAsignar.innerHTML = "";
   }
@@ -891,6 +988,73 @@ function idNuevo(tipo) {
   return tipo + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+// ---------- pinceles: muro (pinta) y goma (borra), arrastrando ----------
+// Se enganchan en fase de captura sobre el tablero, así ganan a los pointerdown
+// de los objetos (que arrancarían un arrastre) mientras haya un pincel armado.
+
+let pintando = null; // { tipo, ultimaCelda }
+
+function celdaDesdeEvento(e) {
+  const rect = tablero.getBoundingClientRect();
+  const { cell, cols, rows } = LAYOUT.grid;
+  const x = Math.floor((e.clientX - rect.left) / cell);
+  const y = Math.floor((e.clientY - rect.top) / cell);
+  if (x < 0 || y < 0 || x >= cols || y >= rows) return null;
+  return { x, y };
+}
+
+function aplicarPincel(celda) {
+  if (!celda) return;
+  const clave = celda.x + "," + celda.y;
+  if (pintando.ultimaCelda === clave) return;
+  pintando.ultimaCelda = clave;
+  if (pintando.tipo === "muro") {
+    if (!celdaLibre(celda.x, celda.y)) return;
+    LAYOUT.objetos.push({ id: idNuevo("muro"), tipo: "muro", x: celda.x, y: celda.y });
+  } else if (pintando.tipo === "goma") {
+    const antes = LAYOUT.objetos.length;
+    LAYOUT.objetos = LAYOUT.objetos.filter((o) => !(o.x === celda.x && o.y === celda.y && BORRABLE_CON_GOMA(o)));
+    if (LAYOUT.objetos.length === antes) return;
+  }
+  pintando.cambio = true;
+  render();
+}
+
+tablero.addEventListener("pointerdown", (e) => {
+  if (!modoDiseno || !PINCELES.has(herramientaArmada)) return;
+  e.preventDefault();
+  e.stopPropagation(); // que el objeto de abajo no arranque un arrastre
+  pintando = { tipo: herramientaArmada, ultimaCelda: null, cambio: false };
+  seleccionId = null;
+  aplicarPincel(celdaDesdeEvento(e));
+}, true);
+
+document.addEventListener("pointermove", (e) => {
+  if (!pintando) return;
+  aplicarPincel(celdaDesdeEvento(e));
+});
+
+document.addEventListener("pointerup", () => {
+  if (!pintando) return;
+  if (pintando.cambio) guardarLocal();
+  pintando = null;
+});
+
+// Isla en modo oficina: lista a quiénes sientan ahí; click en uno abre su panel.
+function abrirPanelIsla(obj) {
+  const sentados = (obj.asientos || []).map((id) => id && AGENTES.find((a) => a.id === id)).filter(Boolean);
+  document.getElementById("panel-avatar-wrap").innerHTML = ICONO_HERRAMIENTA.isla.replace("<svg", '<svg class="avatar"');
+  document.getElementById("panel-nombre").textContent = "Isla";
+  document.getElementById("panel-rol").textContent = sentados.length ? "Escritorio compartido — quién se sienta acá:" : "Escritorio compartido, todavía sin nadie.";
+  document.getElementById("panel-nota").textContent = "";
+  document.getElementById("panel-commit").style.display = "none";
+  document.getElementById("panel-link").style.display = "none";
+  const extra = document.getElementById("panel-extra");
+  extra.innerHTML = sentados.map((a) => `<button class="btn secundario sentado" data-agente="${a.id}">${a.nombre}</button>`).join(" ");
+  extra.querySelectorAll(".sentado").forEach((b) => b.addEventListener("click", () => abrirPanel(AGENTES.find((a) => a.id === b.dataset.agente))));
+  document.getElementById("fondo-modal").classList.add("abierto");
+}
+
 tablero.addEventListener("click", (e) => {
   if (e.target !== tablero) return; // clicks en objetos los maneja onClickObjeto
   if (!modoDiseno || !herramientaArmada) {
@@ -898,6 +1062,7 @@ tablero.addEventListener("click", (e) => {
     render();
     return;
   }
+  if (PINCELES.has(herramientaArmada)) return; // los pinceles trabajan en pointerdown/move, no por click
   const rect = tablero.getBoundingClientRect();
   const { cell, cols, rows } = LAYOUT.grid;
   const x = Math.floor((e.clientX - rect.left) / cell);
@@ -906,6 +1071,7 @@ tablero.addEventListener("click", (e) => {
   if (!celdaLibre(x, y)) return;
   const obj = { id: idNuevo(herramientaArmada), tipo: herramientaArmada, x, y };
   if (herramientaArmada === "escritorio") obj.agenteId = null;
+  if (herramientaArmada === "isla") obj.asientos = [null, null, null, null];
   LAYOUT.objetos.push(obj);
   seleccionId = obj.id;
   guardarLocal();
@@ -915,10 +1081,16 @@ tablero.addEventListener("click", (e) => {
 function onClickObjeto(e, obj) {
   e.stopPropagation();
   if (arrastre && arrastre.movio) return; // fue un drag, no un click
+  // Con un pincel armado, el pointerdown ya hizo su trabajo; el click que llega
+  // después no tiene que seleccionar el objeto ni desarmar el pincel (nos pasó:
+  // la goma se desarmaba sola al pasar por encima de un escritorio).
+  if (modoDiseno && PINCELES.has(herramientaArmada)) return;
   if (!modoDiseno) {
     if (obj.tipo === "escritorio" && obj.agenteId) {
       const agente = AGENTES.find((a) => a.id === obj.agenteId);
       if (agente) abrirPanel(agente);
+    } else if (obj.tipo === "isla") {
+      abrirPanelIsla(obj);
     }
     return;
   }
@@ -1118,6 +1290,8 @@ async function abrirPanel(agente) {
   link.textContent = agente.link_label || "Ver más";
   const commit = document.getElementById("panel-commit");
   commit.style.display = "none";
+  document.getElementById("panel-extra").innerHTML = "";
+  link.style.display = "inline-block";
   document.getElementById("fondo-modal").classList.add("abierto");
 
   if (agente.repo) {
