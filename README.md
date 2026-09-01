@@ -1,7 +1,9 @@
 # Oficina FiBOT
 
 Panel personal de Nacho: un escritorio por línea de trabajo (agente), en una
-oficina 2D. Click en un escritorio para ver el detalle y el link al repo.
+oficina 2D. Click en un escritorio para ver **en qué tarea está, si está
+esperando algo tuyo** y contestarle. **FiBOT es el gerente**: el botón
+"Pedirle a FiBOT" le manda un pedido y él decide qué asistente lo agarra.
 
 Sitio estático, sin build ni dependencias — se edita y se pushea; GitHub
 Pages publica en **oficina.fibot.ar**.
@@ -26,13 +28,21 @@ La oficina puede tener **varias salas** (pestañas arriba del piso), cada
 una con su grilla y sus muebles. Se crean, renombran y eliminan desde
 Modo diseño.
 
-## Actualizar el estado de un agente
+## El estado vivo
+
+Lo que cada escritorio muestra (tarea, "te pregunta algo", cuándo reportó)
+sale de `estado.json` — hoy una muestra estática — o, cuando `OFICINA_API`
+en `index.html` apunte a Personal-FiBOT, de `GET /oficina/estado` cada
+minuto, y los pedidos van a `POST /oficina/pedir`. Contrato y detalle en
+"FiBOT gerente + estado vivo" de `CLAUDE.md`. Hasta que eso esté conectado,
+el botón Enviar queda deshabilitado y los pedidos van por Telegram.
+
+## Actualizar el roster
 
 Editar `agents.json` — cada agente tiene `nombre`, `rol`, `color`, `estado`
-(`activo` / `pausa` / `bloqueado`, cambia el punto de color del escritorio),
-`nota` (lo que se lee en el escritorio y en el panel), `link` y, sólo si el
-repo es realmente público, `repo` (`"owner/nombre"`) para el commit más
-reciente en vivo.
+y `nota` (fallback estático cuando no hay estado vivo), `link`, `gerente`
+(sólo FiBOT) y, sólo si el repo es realmente público, `repo`
+(`"owner/nombre"`) para el commit más reciente en vivo.
 
 ## Cambiar el layout "oficial"
 

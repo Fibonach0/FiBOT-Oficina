@@ -11,6 +11,13 @@
       },
       "objetos": [
         {
+          "id": "desk-fibot",
+          "tipo": "escritorio",
+          "x": 4,
+          "y": 0,
+          "agenteId": "fibot"
+        },
+        {
           "id": "desk-prospeccion",
           "tipo": "escritorio",
           "x": 1,

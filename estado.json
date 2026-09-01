@@ -1,0 +1,42 @@
+{
+  "_readme": "MUESTRA del contrato de estado vivo. En la Etapa 2 esto lo devuelve Personal-FiBOT en GET /oficina/estado (con el token de Supabase de la puerta como Bearer) y se actualiza solo; mientras OFICINA_API esté vacío en index.html, la oficina lee este archivo estático. Estados: en_curso | esperando_dueno | pendiente | hecha | inactivo. 'pregunta' sólo cuando estado = esperando_dueno. 'actualizado' es cuándo reportó el agente por última vez — 'en qué anda' es tan fresco como eso.",
+  "generado": "2026-09-01T22:30:00Z",
+  "agentes": {
+    "fibot": {
+      "estado": "en_curso",
+      "tarea": "Coordinando la oficina",
+      "detalle": "4 asistentes: 2 en curso, 1 esperando algo tuyo, 1 pendiente.",
+      "pregunta": null,
+      "actualizado": "2026-09-01T22:30:00Z"
+    },
+    "prospeccion": {
+      "estado": "en_curso",
+      "tarea": "Prospección continua — corrida de las 21:51",
+      "detalle": "3 mails nuevos: Transporte Mendosur, Mercocargo/Bagual y TransParaguay. 60 prospectos en el tracker; los primeros seguimientos de 7 días salen el 3/9.",
+      "pregunta": null,
+      "actualizado": "2026-09-01T21:55:00Z"
+    },
+    "consultorio": {
+      "estado": "esperando_dueno",
+      "tarea": "Dar de alta el primer tenant real (Marcos)",
+      "detalle": "MVP, página pública de reserva por slug y migración 002 listos en el repo.",
+      "pregunta": "Necesito que cargues en Railway la SUPABASE_SERVICE_ROLE_KEY del proyecto vencimetro y las credenciales de Meta (App + WABA + token permanente). Sin eso no puedo crear el tenant. ¿Cuándo las cargás?",
+      "actualizado": "2026-09-01T20:23:00Z",
+      "link": "https://claude.ai/code/artifact/478fb8cf-1bfe-4a3f-a5f0-de83588ca2b1"
+    },
+    "farmacia": {
+      "estado": "pendiente",
+      "tarea": "Endurecer permisos de Supabase (anon puede escribir el catálogo)",
+      "detalle": "Sin arrancar. LIVE en WhatsApp con las 4 farmacias.",
+      "pregunta": null,
+      "actualizado": "2026-08-30T12:00:00Z"
+    },
+    "personal-fibot": {
+      "estado": "en_curso",
+      "tarea": "Etapa 2 de la oficina: endpoints /oficina/estado y /oficina/pedir",
+      "detalle": "Tabla tareas + auth por token de Supabase + tool delegar_tarea. En diseño.",
+      "pregunta": null,
+      "actualizado": "2026-09-01T22:20:00Z"
+    }
+  }
+}
