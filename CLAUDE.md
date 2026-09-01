@@ -214,6 +214,23 @@ defecto y sin fetch de datos hasta entrar, clave incorrecta, otra cuenta
 de hub rechazada + logout remoto, dueño entra, sesión persiste al recargar,
 refresh automático al vencer, token inválido vuelve a la puerta, Salir.
 
+**Bug real de la primera entrada (para no repetirlo)**: Nacho abrió el sitio
+por `http://` y la puerta murió con "Cannot read properties of undefined
+(reading 'digest')" — `crypto.subtle` **sólo existe en contexto seguro**
+(https o localhost), y los tests habían corrido en localhost, que cuenta
+como seguro. Dos arreglos: (1) la puerta detecta `http://` fuera de
+localhost, **no manda la clave** (viajaría sin cifrar, igual que el token
+después) y muestra el link `https://`; (2) `sha256Hex` cae a una
+implementación en JS puro (`sha256HexJS`, verificada contra `hashlib` de
+Python) si `crypto.subtle` no está — el hash no tiene por qué depender de
+la API del navegador. Regla general que sale de acá: **todo test de
+"funciona en el navegador" hay que correrlo también en un origen que NO
+sea localhost** (en Playwright: `--host-resolver-rules` mapeando un
+hostname falso a 127.0.0.1) — localhost es un contexto privilegiado y
+esconde exactamente esta clase de bug. En GitHub Pages, una vez emitido el
+certificado, activar **Enforce HTTPS** en Settings → Pages para que `http`
+redirija solo.
+
 ## Convenciones
 
 - **Nunca commitear directo a `main`**: rama + PR.
