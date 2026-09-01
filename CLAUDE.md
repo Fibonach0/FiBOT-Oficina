@@ -194,6 +194,38 @@ Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
 genera un layout mínimo con un escritorio por agente en fila — la página
 nunca queda en blanco por falta de ese archivo.
 
+## Carteles — pizarras que son links
+
+Mueble `cartel` (`{tipo, x, y, titulo, url, icono}`): en vista normal un click
+abre `url` en otra pestaña (`noopener`); en Modo diseño el panel de
+selección muestra título / link / ícono. El ícono es un emoji opcional; si
+está vacío se pide el **favicon** a `google.com/s2/favicons` (única llamada
+externa del sitio en tiempo de ejecución, con fallback 🔗 si falla o está
+bloqueado). Los campos usan `change` y redibujan **sólo ese objeto**
+(`replaceWith(elementoDe(obj))`): un `render()` entero rehace el panel y te
+saca del campo mientras escribís. Los cuatro oficiales: Railway (el
+proyecto `jarvis`), Flota Cantarini, Hub FiBOT y GitHub.
+
+## Editor de apariencia — cambiar la pinta de un agente sin pedirle a nadie
+
+Panel del agente → **Editar apariencia**. Es Open Peeps de verdad, generado
+en el navegador con **`vendor/openpeeps.js`** (bundle de DiceBear core +
+`openPeeps`, MIT + CC0, ver `vendor/LICENSES.md`), que se carga **sólo al
+abrir el editor** — la oficina sigue sin dependencias externas para verse.
+Campos: peinado (48), cara (30), vello facial, anteojos/accesorio, máscara,
+piel (5) y ropa (7), más "Al azar". Se guarda con las `opciones` elegidas
+(para reabrir el editor donde quedó) y el SVG ya generado.
+
+Persistencia, mismo patrón que el layout: lo guardado va a `localStorage`
+(`fibot-oficina-avatares`) por encima de `avatares.json`
+(`aplicarOverridesAvatares` en `iniciar`, y `AVATARES.oficiales` guarda la
+copia original para "Volver al oficial"). Para que se vea en cualquier
+dispositivo: **Descargar avatares.json** y reemplazar el del repo.
+
+Para regenerar el bundle: `npm i @dicebear/core @dicebear/collection`, un
+`entry.js` con `window.OpenPeeps = { createAvatar, openPeeps }` y
+`bun build entry.js --outfile vendor/openpeeps.js --minify --format=iife --target=browser`.
+
 ## Vida en la oficina — cuerpos, cocina, tazas y el agente del mes
 
 Pedido de Nacho: que los agentes tengan cuerpo y anden por la oficina. Es
