@@ -51,18 +51,19 @@ Ver conversación de origen para el detalle de por qué se separó en dos fases.
 ## Arquitectura
 
 ```
-index.html   la oficina entera: HTML + CSS + JS vanilla, sin build ni framework
-agents.json  el roster — nombre, rol, color, estado, nota, link, repo (opcional)
-layout.json  el diseño "oficial" — grilla + qué mueble va en qué celda
-CNAME        oficina.fibot.ar
+index.html     la oficina entera: HTML + CSS + JS vanilla, sin build ni framework
+agents.json    el roster — nombre, rol, color, estado, nota, link, repo (opcional)
+layout.json    el diseño "oficial" — grilla + qué mueble va en qué celda
+avatares.json  los 3 sets de avatares CC0 pre-generados (ver más abajo)
+CNAME          oficina.fibot.ar
 ```
 
-Cada escritorio y cada mueble es un SVG dibujado a mano (`avatarSVG()` /
-`DECO_SVG` en `index.html`) — nada de assets externos, cero riesgo de
-licencia. El estado (`activo` / `pausa` / `bloqueado`) es el punto de color
-en el monitor; la nota corta es lo primero que se lee, el panel de detalle
-(click) trae la descripción larga, el link al repo y —si el agente tiene
-`repo` público— el último commit en vivo.
+Cada mueble de decoración es un SVG dibujado a mano (`DECO_SVG` en
+`index.html`) — nada de assets externos, cero riesgo de licencia. El estado
+(`activo` / `pausa` / `bloqueado`) es el punto de color en el monitor; la
+nota corta es lo primero que se lee, el panel de detalle (click) trae la
+descripción larga, el link al repo y —si el agente tiene `repo` público— el
+último commit en vivo.
 
 **`agents.json` (el roster) y `layout.json` (dónde va cada cosa) están
 separados a propósito**: un escritorio en el layout sólo guarda `agenteId`,
@@ -92,6 +93,47 @@ Nacho lo puede hacer él mismo (tiene push) o pasármelo para que lo suba.
 Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
 genera un layout mínimo con un escritorio por agente en fila — la página
 nunca queda en blanco por falta de ese archivo.
+
+## Avatares — 4 estilos, elegibles, cero dependencia en tiempo de ejecución
+
+Selector "Avatares" en el header (persiste en `localStorage`, es preferencia
+de quien mira, no del layout). Cuatro opciones:
+
+- **Clásico** — el circulito con cara dibujado a mano (`avatarSVG()`), el
+  original de la v1. Cero dependencias, siempre disponible.
+- **Open Peeps** (Pablo Stanley), **Lorelei** (Lisa Wischofsky) y **Pixel
+  Art** (DiceBear) — los tres **CC0 1.0** (dominio público, sin atribución
+  obligatoria), elegidos a propósito entre los estilos de
+  [DiceBear](https://www.dicebear.com/) que **son** CC0 — DiceBear tiene 61
+  estilos y varios (ej. Adventurer) son CC-BY-4.0 (piden crédito visible) o
+  de licencia más restrictiva; no vale asumir, hay que mirar cada uno.
+
+**Por qué están embebidos en `avatares.json` y no vienen de la API/librería
+de DiceBear en vivo**: es la misma lógica que ya rige el resto del sitio —
+cero dependencia externa en tiempo de ejecución. Se generaron **una sola
+vez**, localmente, con `@dicebear/core` + `@dicebear/collection` (Node) y
+quedaron commiteados como SVG crudo. Si en algún momento se suman más
+agentes hace falta regenerar `avatares.json` corriendo ese mismo script de
+nuevo (no está en el repo — es un array de 10 líneas, rehacerlo es más
+rápido que mantenerlo).
+
+**Bug real que ya pasó acá, para no repetirlo**: DiceBear devuelve el mismo
+`id="viewboxMask"` en TODOS los avatares que genera. Con un solo avatar en
+pantalla no se nota; con varios a la vez (como acá, un escritorio al lado
+del otro) el navegador resuelve `url(#viewboxMask)` contra el PRIMER
+elemento con ese id en el documento — todos los avatares terminan
+enmascarados por la máscara del primero. `index.html` renombra esos id (y
+sus referencias `url(#...)`) a algo único cada vez que inserta un avatar en
+el DOM (`idsUnicos()`) — no tocar esa función sin entender por qué existe.
+
+Segundo bug, más tonto, de la misma tanda: al limpiar el SVG generado (sacar
+el `width`/`height` fijo del `<svg>` raíz para que lo maneje la clase CSS
+`.avatar`) un regex sin acotar le pegó por error al `width`/`height` de un
+`<rect>` interno de la máscara en vez de al de la etiqueta `<svg>` — la
+máscara quedó en 0×0 y el avatar entero se volvió invisible, sin ningún
+error en consola. La lección: al tocar un SVG generado por otra librería,
+acotar cualquier reemplazo a la etiqueta de apertura exacta, nunca un regex
+que corra sobre el documento entero.
 
 ## Datos en vivo — sólo para lo que es de verdad público
 
