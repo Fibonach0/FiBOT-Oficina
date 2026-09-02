@@ -194,6 +194,30 @@ Si `layout.json` no existiera (o el fetch fallara), `layoutPorDefecto()`
 genera un layout mínimo con un escritorio por agente en fila — la página
 nunca queda en blanco por falta de ese archivo.
 
+## El roster y las salas (sep 2026)
+
+Nacho definió los agentes por repo: **Principal** (FiBOT gerente, Prospección,
+Consultorio, Farmacia, Personal-FiBOT, Casa, Página=fibot.ar, Eventos,
+Captcha=FiBOT-Multas, Oficina), **Cantarini** (HUB Flotas=cantapp, **Cepi**=el
+bot de WhatsApp de la flota en fleet-bot-pastor —antes figuraba como
+"FlotaBot"—, Peajes, Encomiendas=fleet-encomiendas) y **LODTE** (el juego
+LODTE-Game y El Tabernero). Los ids de `agents.json` son los mismos que usa
+Personal-FiBOT para delegar (`OFICINA_AGENTES_DEFAULT`): si se renombra uno
+acá hay que renombrarlo allá, o las tareas no matchean escritorio. `repo`
+sólo va en los públicos (fibot.ar, LODTE-Game, FiBOT-Oficina, Consultorio).
+
+## Contratar agentes
+
+Modo diseño → **Contratar agente**: nombre, qué hace, repo (opcional),
+palabras clave, color. Hace tres cosas: (1) `POST {OFICINA_API}/oficina/contratar`
+— FiBOT lo guarda en su tabla `oficina_agentes` y desde ese momento le delega
+lo que hable de sus claves (y despacha si tiene repo); si la API falla, no
+se contrata; (2) lo suma a `AGENTES` y a `localStorage` (`fibot-oficina-agentes`,
+`aplicarContratados` en `iniciar`) con un Open Peeps al azar (editable
+después) y un escritorio en la primera celda libre de la sala activa; (3)
+**Descargar agents.json** lo vuelve oficial, mismo patrón que layout y
+avatares. El id es el slug del nombre y no se puede repetir.
+
 ## Carteles — pizarras que son links
 
 Mueble `cartel` (`{tipo, x, y, titulo, url, icono}`): en vista normal un click

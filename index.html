@@ -361,6 +361,7 @@
       <button class="btn secundario" data-grilla="rows" data-delta="1" title="Agregar fila">+ fila</button>
       <button class="btn secundario" data-grilla="rows" data-delta="-1" title="Sacar la última fila (si está vacía)">− fila</button>
     </div>
+    <button class="btn" id="btn-contratar" style="width:100%; margin: 6px 0 10px;">Contratar agente</button>
     <div class="panel-seleccion" id="panel-seleccion" style="display:none;">
       <h4>Seleccionado</h4>
       <div id="sel-asignar"></div>
@@ -404,6 +405,26 @@
     <p class="commit" id="panel-commit" style="display:none;"></p>
     <a class="link-chico" id="panel-link" target="_blank" rel="noopener"></a>
     <button class="btn secundario solo-agente" id="btn-apariencia" style="margin-top:12px; font-size:.8rem;">Editar apariencia</button>
+  </div>
+</div>
+
+<div class="fondo-modal" id="fondo-contratar">
+  <div class="panel" role="dialog" aria-modal="true">
+    <button class="cerrar" id="contratar-cerrar" aria-label="Cerrar">×</button>
+    <h2>Contratar agente</h2>
+    <p class="rol">Un agente por repo o línea de trabajo. FiBOT lo conoce al instante y le delega lo que hable de sus palabras clave.</p>
+    <form id="form-contratar" class="editor-campos">
+      <label>Nombre<input id="ct-nombre" required maxlength="40" placeholder="Vehicle Intelligence"></label>
+      <label>Qué hace<input id="ct-rol" required maxlength="160" placeholder="Análisis de datos de vehículos para flotas"></label>
+      <label>Repo (opcional)<input id="ct-repo" maxlength="80" placeholder="fibot-vehicle-intelligence"></label>
+      <label>Palabras clave (separadas por coma) <input id="ct-claves" maxlength="200" placeholder="vehículo, telemetría, inteligencia vehicular"></label>
+      <label>Color<input id="ct-color" type="color" value="#5b7a8a" style="width:60px; padding:2px;"></label>
+      <div class="editor-acciones">
+        <button class="btn" type="submit" id="ct-enviar">Contratar</button>
+        <button class="btn secundario" type="button" id="ct-descargar" title="Baja agents.json con los contratados para commitearlo">Descargar agents.json</button>
+      </div>
+      <p class="editor-nota" id="ct-nota">Le avisa a FiBOT (queda en su base), le pone un escritorio en esta sala y un avatar al azar que después podés editar. Para que quede oficial en cualquier dispositivo, descargá <code>agents.json</code> y reemplazá el del repo.</p>
+    </form>
   </div>
 </div>
 
@@ -851,6 +872,103 @@ function avatarParaAgente(agente) {
   const svg = AVATARES && AVATARES.avatares[agente.id] && AVATARES.avatares[agente.id].openPeeps;
   return svg ? idsUnicos(svg) : avatarSVG(agente.color);
 }
+
+// ---------- contratar agentes ----------
+// Nacho quiere sumar agentes cuando crea repos nuevos, sin pedirle a nadie.
+// El alta va a FiBOT (POST /oficina/contratar: desde ese momento delega) y el
+// escritorio + avatar quedan en este navegador (CLAVE_AGENTES), por encima de
+// agents.json — mismo patrón que layout y avatares; "Descargar agents.json"
+// lo vuelve oficial.
+const CLAVE_AGENTES = "fibot-oficina-agentes";
+function cargarContratados() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_AGENTES)) || []; } catch (e) { return []; }
+}
+function aplicarContratados() {
+  const extra = cargarContratados();
+  extra.forEach((a) => { if (!AGENTES.some((x) => x.id === a.id)) AGENTES.push(a); });
+}
+function slugDe(t) {
+  return String(t).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+}
+async function contratarAgente(datos) {
+  const id = slugDe(datos.nombre);
+  if (!id) throw new Error("Poné un nombre.");
+  if (AGENTES.some((a) => a.id === id)) throw new Error(`Ya hay un agente "${id}".`);
+  const claves = String(datos.claves || "").split(",").map((c) => c.trim().toLowerCase()).filter(Boolean);
+  if (OFICINA_API) {
+    const s = leerSesion();
+    const r = await fetch(OFICINA_API + "/oficina/contratar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + (s ? s.access_token : "") },
+      body: JSON.stringify({ id, nombre: datos.nombre, descripcion: datos.rol, repo: datos.repo || null, claves, color: datos.color, rol: datos.rol }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || ("FiBOT respondió " + r.status));
+  }
+  const agente = {
+    id, nombre: datos.nombre, rol: datos.rol, color: datos.color, estado: "activo",
+    nota: `Contratado desde la oficina el ${new Date().toLocaleDateString("es-AR")}.`,
+    link: datos.repo ? `https://github.com/${datos.repo.includes("/") ? datos.repo : "Fibonach0/" + datos.repo}` : "",
+    link_label: datos.repo ? "repo" : "", claves, contratado: true,
+  };
+  AGENTES.push(agente);
+  localStorage.setItem(CLAVE_AGENTES, JSON.stringify([...cargarContratados(), agente]));
+  // avatar al azar (Open Peeps de verdad) — editable después desde su panel
+  try {
+    await cargarOpenPeeps();
+    const L = opcionesOpenPeeps();
+    const op = opAlAzar(L);
+    const valor = { openPeeps: generarPeep(op), opciones: op };
+    if (!AVATARES) AVATARES = { estilos: { openPeeps: "Open Peeps" }, avatares: {} };
+    if (!AVATARES.oficiales) AVATARES.oficiales = JSON.parse(JSON.stringify(AVATARES.avatares));
+    AVATARES.avatares[id] = valor;
+    guardarAvatarLocal(id, valor);
+  } catch (e) { /* sin vendor queda el avatar clásico del color */ }
+  // escritorio en la primera celda libre de la sala activa
+  const { cols, rows } = LAYOUT.grid;
+  let puesto = null;
+  for (let y = 0; y < rows && !puesto; y++) for (let x = 0; x < cols && !puesto; x++) if (celdaLibre(x, y)) puesto = [x, y];
+  if (puesto) LAYOUT.objetos.push({ id: "desk-" + id, tipo: "escritorio", x: puesto[0], y: puesto[1], agenteId: id });
+  guardarLocal();
+  render();
+  return agente;
+}
+document.getElementById("btn-contratar").addEventListener("click", () => {
+  document.getElementById("form-contratar").reset();
+  document.getElementById("ct-nota").textContent = "Le avisa a FiBOT (queda en su base), le pone un escritorio en esta sala y un avatar al azar que después podés editar. Para que quede oficial en cualquier dispositivo, descargá agents.json y reemplazá el del repo.";
+  document.getElementById("fondo-contratar").classList.add("abierto");
+});
+document.getElementById("contratar-cerrar").addEventListener("click", () => document.getElementById("fondo-contratar").classList.remove("abierto"));
+document.getElementById("fondo-contratar").addEventListener("click", (e) => {
+  if (e.target.id === "fondo-contratar") e.currentTarget.classList.remove("abierto");
+});
+document.getElementById("form-contratar").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nota = document.getElementById("ct-nota");
+  const boton = document.getElementById("ct-enviar");
+  boton.disabled = true; nota.textContent = "Contratando…";
+  try {
+    const a = await contratarAgente({
+      nombre: document.getElementById("ct-nombre").value.trim(),
+      rol: document.getElementById("ct-rol").value.trim(),
+      repo: document.getElementById("ct-repo").value.trim(),
+      claves: document.getElementById("ct-claves").value,
+      color: document.getElementById("ct-color").value,
+    });
+    nota.textContent = `${a.nombre} ya tiene escritorio. ${OFICINA_API ? "FiBOT ya lo conoce." : "(Sin API: quedó sólo acá.)"} Descargá agents.json para dejarlo oficial.`;
+  } catch (err) {
+    nota.textContent = err.message;
+  } finally {
+    boton.disabled = false;
+  }
+});
+document.getElementById("ct-descargar").addEventListener("click", () => {
+  const agentes = AGENTES.map(({ contratado, ...a }) => a);
+  const blob = new Blob([JSON.stringify({ _readme: "Roster de la oficina. Ver CLAUDE.md.", agentes }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "agents.json"; a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 // ---------- editor de apariencia (Open Peeps, en el navegador) ----------
 // Nacho quiere cambiar la pinta de FiBOT (y de cualquier agente) sin pedirle a
@@ -2018,6 +2136,7 @@ function vidaEstadoNuevo() {
 async function iniciar() {
   try {
     AGENTES = await cargarAgentes();
+    aplicarContratados();
   } catch (e) {
     document.getElementById("tablero").textContent = "No se pudo cargar agents.json: " + e.message;
     return;
