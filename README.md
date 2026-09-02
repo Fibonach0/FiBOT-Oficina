@@ -28,6 +28,14 @@ La oficina puede tener **varias salas** (pestañas arriba del piso), cada
 una con su grilla y sus muebles. Se crean, renombran y eliminan desde
 Modo diseño.
 
+## Salas y agentes
+
+Tres salas: **Principal** (FiBOT y los proyectos de FiBOT), **Cantarini**
+(HUB Flotas, Cepi, Peajes, Encomiendas) y **LODTE** (el juego y El
+Tabernero). Desde Modo diseño → **Contratar agente** se suma uno nuevo
+(nombre, qué hace, repo, palabras clave): FiBOT lo conoce al instante y
+aparece con escritorio y avatar; "Descargar agents.json" lo deja oficial.
+
 ## Carteles y apariencia
 
 Los **carteles** son pizarras que abren un sitio al hacerles click (Railway,

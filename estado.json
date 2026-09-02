@@ -38,13 +38,6 @@
       "pregunta": null,
       "actualizado": "2026-09-01T22:20:00Z"
     },
-    "flotabot": {
-      "estado": "inactivo",
-      "tarea": "Sin tarea reportada",
-      "detalle": "En producción, sin pedidos pendientes.",
-      "pregunta": null,
-      "actualizado": "2026-09-01T22:30:00Z"
-    },
     "peajes": {
       "estado": "pendiente",
       "tarea": "Conseguir la rendición completa de un mes real",

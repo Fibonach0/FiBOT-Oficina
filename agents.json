@@ -13,14 +13,67 @@
       "link_label": "repo"
     },
     {
-      "id": "prospeccion",
-      "nombre": "Prospección",
-      "rol": "Busca transportistas y rubros chicos, manda el primer mail frío y los seguimientos de 7/15 días",
-      "color": "#e0793c",
+      "id": "captcha",
+      "nombre": "Captcha",
+      "rol": "FiBOT-Multas: consulta automática de multas e infracciones (resolviendo captchas)",
+      "color": "#5b584f",
       "estado": "activo",
-      "nota": "Corre sola cada 3hs vía GitHub Actions — ~30 prospectos contactados hasta ahora, sin humano en el loop salvo los WhatsApp pendientes.",
-      "link": "https://github.com/Fibonach0/Personal-FiBOT",
-      "link_label": "Ver repo"
+      "nota": "Repo FiBOT-Multas.",
+      "link": "https://github.com/Fibonach0/FiBOT-Multas",
+      "link_label": "repo (privado)"
+    },
+    {
+      "id": "cepi",
+      "nombre": "Cepi",
+      "rol": "El bot de WhatsApp de la flota de Transportes Cantarini (~267 camiones): choferes, telemetría, reportes",
+      "color": "#3b5b7a",
+      "estado": "activo",
+      "nota": "En producción. Es el cliente original del que salió todo el resto. Antes figuraba como FlotaBot.",
+      "link": "https://github.com/Fibonach0/fleet-bot-pastor",
+      "link_label": "repo (privado)",
+      "grupo": "cantarini"
+    },
+    {
+      "id": "tabernero",
+      "nombre": "El Tabernero",
+      "rol": "El bot tabernero de LODTE",
+      "color": "#6b4c2a",
+      "estado": "pausa",
+      "nota": "Repo el-tabernero.",
+      "link": "https://github.com/Fibonach0/el-tabernero",
+      "link_label": "repo (privado)",
+      "grupo": "lodte"
+    },
+    {
+      "id": "encomiendas",
+      "nombre": "Encomiendas",
+      "rol": "Seguimiento de encomiendas de la flota",
+      "color": "#a3552f",
+      "estado": "activo",
+      "nota": "Repo fleet-encomiendas.",
+      "link": "https://github.com/Fibonach0/fleet-encomiendas",
+      "link_label": "repo (privado)",
+      "grupo": "cantarini"
+    },
+    {
+      "id": "eventos",
+      "nombre": "Eventos",
+      "rol": "FiBOT-Eventos: bot de WhatsApp para organizar eventos",
+      "color": "#7a3b5b",
+      "estado": "activo",
+      "nota": "Repo FiBOT-Eventos.",
+      "link": "https://github.com/Fibonach0/FiBOT-Eventos",
+      "link_label": "repo (privado)"
+    },
+    {
+      "id": "casa",
+      "nombre": "FiBOT Casa",
+      "rol": "La web de domótica de casa (luces, escenas, zonas, Alexa) — en el tintero el rediseño a casa.fibot.ar",
+      "color": "#6b4c8a",
+      "estado": "activo",
+      "nota": "Anda (jarvis en Railway). Pendiente: rebautizar a FiBOT Casa y el rediseño con el cerebro cósmico.",
+      "link": "https://github.com/Fibonach0/jarvis",
+      "link_label": "repo (privado)"
     },
     {
       "id": "consultorio",
@@ -44,6 +97,51 @@
       "link_label": "Ver repo"
     },
     {
+      "id": "hub",
+      "nombre": "HUB Flotas",
+      "rol": "hub.fibot.ar — el panel web de la flota de Cantarini: viajes, combustible, portería, RTO, padrón",
+      "color": "#2f5233",
+      "estado": "activo",
+      "nota": "React + Supabase. Sincroniza el padrón desde el CantApp original todas las madrugadas.",
+      "link": "https://hub.fibot.ar",
+      "link_label": "abrir hub",
+      "grupo": "cantarini"
+    },
+    {
+      "id": "lodte-game",
+      "nombre": "LODTE (juego)",
+      "rol": "El juego LODTE",
+      "color": "#3a3a44",
+      "estado": "pausa",
+      "nota": "Repo público LODTE-Game.",
+      "link": "https://github.com/Fibonach0/LODTE-Game",
+      "link_label": "Ver repo",
+      "repo": "Fibonach0/LODTE-Game",
+      "grupo": "lodte"
+    },
+    {
+      "id": "oficina",
+      "nombre": "Oficina",
+      "rol": "Mantiene este panel (oficina.fibot.ar): escritorios, salas, avatares, la vida de la oficina",
+      "color": "#8a5a3a",
+      "estado": "activo",
+      "nota": "Es el asistente que FiBOT despierta cuando le pedís algo de la oficina misma.",
+      "link": "https://github.com/Fibonach0/FiBOT-Oficina",
+      "link_label": "Ver repo",
+      "repo": "Fibonach0/FiBOT-Oficina"
+    },
+    {
+      "id": "peajes",
+      "nombre": "Peajes",
+      "rol": "Conciliación de peajes de la flota: cruza GPS + rendición del ente contra el tarifario para encontrar sobrecobros",
+      "color": "#8a6d2f",
+      "estado": "pausa",
+      "nota": "El motor anda; faltan datos (la rendición completa de un mes real).",
+      "link": "https://github.com/Fibonach0/FiBOT-Peajes",
+      "link_label": "repo (privado)",
+      "grupo": "cantarini"
+    },
+    {
       "id": "personal-fibot",
       "nombre": "Personal-FiBOT",
       "rol": "El asistente de Telegram/WhatsApp de Nacho — domótica, banco, compras, memoria, co-admin",
@@ -54,34 +152,25 @@
       "link_label": "Ver repo"
     },
     {
-      "id": "flotabot",
-      "nombre": "FlotaBot",
-      "rol": "El bot de WhatsApp + panel de la flota de Transportes Cantarini (~267 camiones)",
-      "color": "#3b5b7a",
+      "id": "prospeccion",
+      "nombre": "Prospección",
+      "rol": "Busca transportistas y rubros chicos, manda el primer mail frío y los seguimientos de 7/15 días",
+      "color": "#e0793c",
       "estado": "activo",
-      "nota": "En producción en flotacantarini.fibot.ar. Es el cliente original del que salió todo el resto.",
-      "link": "https://github.com/Fibonach0/fleet-bot-pastor",
+      "nota": "Corre sola cada 3hs vía GitHub Actions — ~30 prospectos contactados hasta ahora, sin humano en el loop salvo los WhatsApp pendientes.",
+      "link": "https://github.com/Fibonach0/Personal-FiBOT",
       "link_label": "Ver repo"
     },
     {
-      "id": "peajes",
-      "nombre": "FiBOT-Peajes",
-      "rol": "Conciliación de peajes de flotas: cruza GPS + rendición del ente contra el tarifario para encontrar sobrecobros",
-      "color": "#8a6d2f",
-      "estado": "pausa",
-      "nota": "El motor anda; faltan datos (la rendición completa de un mes real). Sin eso no hay resultados que mostrar.",
-      "link": "https://github.com/Fibonach0/FiBOT-Peajes",
-      "link_label": "Ver repo"
-    },
-    {
-      "id": "casa",
-      "nombre": "FiBOT Casa",
-      "rol": "La web de domótica de casa (luces, escenas, zonas, Alexa) — en el tintero el rediseño a casa.fibot.ar",
-      "color": "#6b4c8a",
+      "id": "pagina",
+      "nombre": "Página",
+      "rol": "fibot.ar — el sitio comercial de FiBOT",
+      "color": "#e0793c",
       "estado": "activo",
-      "nota": "Anda (jarvis en Railway). Pendiente: rebautizar a FiBOT Casa y el rediseño con el cerebro cósmico.",
-      "link": "https://github.com/Fibonach0/jarvis",
-      "link_label": "repo (privado)"
+      "nota": "Sitio estático público. Cambios de copy, secciones nuevas, SEO.",
+      "link": "https://www.fibot.ar",
+      "link_label": "abrir sitio",
+      "repo": "Fibonach0/fibot.ar"
     }
   ]
 }

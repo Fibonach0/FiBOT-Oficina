@@ -88,27 +88,6 @@
           "y": 6
         },
         {
-          "id": "desk-flotabot",
-          "tipo": "escritorio",
-          "x": 1,
-          "y": 4,
-          "agenteId": "flotabot"
-        },
-        {
-          "id": "desk-peajes",
-          "tipo": "escritorio",
-          "x": 4,
-          "y": 4,
-          "agenteId": "peajes"
-        },
-        {
-          "id": "desk-casa",
-          "tipo": "escritorio",
-          "x": 7,
-          "y": 4,
-          "agenteId": "casa"
-        },
-        {
           "id": "cuadro-1",
           "tipo": "cuadro",
           "x": 6,
@@ -161,6 +140,186 @@
           "titulo": "GitHub",
           "url": "https://github.com/Fibonach0",
           "icono": ""
+        },
+        {
+          "id": "desk-casa",
+          "tipo": "escritorio",
+          "x": 0,
+          "y": 4,
+          "agenteId": "casa"
+        },
+        {
+          "id": "desk-pagina",
+          "tipo": "escritorio",
+          "x": 2,
+          "y": 4,
+          "agenteId": "pagina"
+        },
+        {
+          "id": "desk-eventos",
+          "tipo": "escritorio",
+          "x": 4,
+          "y": 4,
+          "agenteId": "eventos"
+        },
+        {
+          "id": "desk-captcha",
+          "tipo": "escritorio",
+          "x": 6,
+          "y": 4,
+          "agenteId": "captcha"
+        },
+        {
+          "id": "desk-oficina",
+          "tipo": "escritorio",
+          "x": 8,
+          "y": 4,
+          "agenteId": "oficina"
+        }
+      ]
+    },
+    {
+      "id": "cantarini",
+      "nombre": "Cantarini",
+      "grid": {
+        "cols": 8,
+        "rows": 5,
+        "cell": 140
+      },
+      "objetos": [
+        {
+          "id": "c-cartel-hub",
+          "tipo": "cartel",
+          "x": 0,
+          "y": 0,
+          "titulo": "Hub Flotas",
+          "url": "https://hub.fibot.ar",
+          "icono": ""
+        },
+        {
+          "id": "c-cartel-flota",
+          "tipo": "cartel",
+          "x": 1,
+          "y": 0,
+          "titulo": "Flota Cantarini",
+          "url": "https://flotacantarini.fibot.ar",
+          "icono": ""
+        },
+        {
+          "id": "c-pizarra",
+          "tipo": "pizarra",
+          "x": 7,
+          "y": 0
+        },
+        {
+          "id": "desk-hub",
+          "tipo": "escritorio",
+          "x": 1,
+          "y": 2,
+          "agenteId": "hub"
+        },
+        {
+          "id": "desk-cepi",
+          "tipo": "escritorio",
+          "x": 3,
+          "y": 2,
+          "agenteId": "cepi"
+        },
+        {
+          "id": "desk-peajes",
+          "tipo": "escritorio",
+          "x": 5,
+          "y": 2,
+          "agenteId": "peajes"
+        },
+        {
+          "id": "desk-encomiendas",
+          "tipo": "escritorio",
+          "x": 7,
+          "y": 2,
+          "agenteId": "encomiendas"
+        },
+        {
+          "id": "c-cafetera",
+          "tipo": "cafetera",
+          "x": 3,
+          "y": 4
+        },
+        {
+          "id": "c-dispenser",
+          "tipo": "dispenser",
+          "x": 4,
+          "y": 4
+        },
+        {
+          "id": "c-planta",
+          "tipo": "planta",
+          "x": 0,
+          "y": 4
+        },
+        {
+          "id": "c-sofa",
+          "tipo": "sofa",
+          "x": 6,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "id": "lodte",
+      "nombre": "LODTE",
+      "grid": {
+        "cols": 6,
+        "rows": 4,
+        "cell": 140
+      },
+      "objetos": [
+        {
+          "id": "l-cartel",
+          "tipo": "cartel",
+          "x": 0,
+          "y": 0,
+          "titulo": "LODTE",
+          "url": "https://github.com/Fibonach0/LODTE-Game",
+          "icono": "🎲"
+        },
+        {
+          "id": "desk-lodte-game",
+          "tipo": "escritorio",
+          "x": 1,
+          "y": 2,
+          "agenteId": "lodte-game"
+        },
+        {
+          "id": "desk-tabernero",
+          "tipo": "escritorio",
+          "x": 4,
+          "y": 2,
+          "agenteId": "tabernero"
+        },
+        {
+          "id": "l-cafetera",
+          "tipo": "cafetera",
+          "x": 5,
+          "y": 0
+        },
+        {
+          "id": "l-heladera",
+          "tipo": "heladera",
+          "x": 4,
+          "y": 0
+        },
+        {
+          "id": "l-planta",
+          "tipo": "planta",
+          "x": 0,
+          "y": 3
+        },
+        {
+          "id": "l-alfombra",
+          "tipo": "alfombra",
+          "x": 2,
+          "y": 2
         }
       ]
     }
