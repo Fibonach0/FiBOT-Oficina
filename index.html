@@ -1298,14 +1298,21 @@ function layoutPorDefecto() {
   return { salas: [{ id: "principal", nombre: "Principal", grid: { cols: 10, rows: 6, cell: 140 }, objetos }] };
 }
 
-async function cargarLayoutOficial() {
+// Devuelve el layout.json normalizado, o null si no se pudo leer. La distinción
+// importa: `layoutPorDefecto()` es un invento local, y no hay que inyectar salas
+// inventadas en el boceto de nadie.
+async function cargarLayoutOficialCrudo() {
   try {
     const res = await fetch("layout.json", { cache: "no-store" });
     if (!res.ok) throw new Error("sin layout.json");
-    return normalizarDiseno(await res.json()) || layoutPorDefecto();
+    return normalizarDiseno(await res.json());
   } catch (e) {
-    return layoutPorDefecto();
+    return null;
   }
+}
+
+async function cargarLayoutOficial() {
+  return (await cargarLayoutOficialCrudo()) || layoutPorDefecto();
 }
 
 function cargarLayoutLocal() {
@@ -1561,23 +1568,54 @@ function salaCostosPorDefecto() {
   return { id: SALA_COSTOS, nombre: "Payroll", auto: "costos", grid: { cols: COSTOS_COLS, rows: 1, cell: 170 }, objetos: [] };
 }
 
-// La sala se agrega UNA vez, también sobre un boceto local ya diseñado (si no,
-// quien tenga su propio layout en el navegador nunca vería el piso nuevo). El
-// flag recuerda que ya se agregó, así borrarla a propósito no la revive.
-const CLAVE_PAYROLL = "fibot-oficina-payroll-v1";
-function asegurarSalaPayroll(diseno) {
-  if (!diseno || !Array.isArray(diseno.salas)) return;
-  if (diseno.salas.some((s) => s.id === SALA_COSTOS)) return;
-  try { if (localStorage.getItem(CLAVE_PAYROLL)) return; } catch (e) { /* sin storage */ }
-  diseno.salas.push(salaCostosPorDefecto());
-  try { localStorage.setItem(CLAVE_PAYROLL, "1"); } catch (e) { /* sin storage */ }
+// UN BOCETO LOCAL LE GANA AL layout.json, así que una sala agregada al oficial
+// DESPUÉS de que alguien guardó el suyo no aparece nunca — y el que la guardó no
+// tiene cómo enterarse. No es hipotético: Cantarini y LODTE se sumaron al
+// oficial y en el navegador que ya tenía boceto no estaban, mientras que Payroll
+// sí aparecía porque se inyectaba a mano. Ahora se inyecta cualquier sala del
+// oficial que falte, UNA vez cada una: el registro recuerda cuáles ya se
+// ofrecieron, así borrar una a propósito no la revive.
+const CLAVE_INYECTADAS = "fibot-oficina-salas-inyectadas";
+const CLAVE_PAYROLL = "fibot-oficina-payroll-v1"; // el flag viejo, sólo de Payroll
+
+function salasYaInyectadas() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_INYECTADAS);
+    if (crudo) return new Set(JSON.parse(crudo));
+    // Migración: quien ya tenía el flag viejo no debe recibir Payroll de nuevo.
+    return new Set(localStorage.getItem(CLAVE_PAYROLL) ? [SALA_COSTOS] : []);
+  } catch (e) { return new Set(); }
+}
+
+function asegurarSalasOficiales(diseno, oficial) {
+  if (!diseno || !Array.isArray(diseno.salas) || !oficial || !Array.isArray(oficial.salas)) return [];
+  const ya = salasYaInyectadas();
+  const tiene = new Set(diseno.salas.map((s) => s.id));
+  const sumadas = [];
+  oficial.salas.forEach((s) => {
+    if (tiene.has(s.id) || ya.has(s.id)) return;
+    // Copia propia: el boceto local no debe compartir objetos con el oficial.
+    diseno.salas.push(JSON.parse(JSON.stringify(s)));
+    ya.add(s.id);
+    sumadas.push(s.nombre);
+  });
+  if (sumadas.length) {
+    // El registro y el boceto se escriben JUNTOS. Anotar "ya la ofrecí" sin
+    // guardar la sala la haría desaparecer en la carga siguiente, esta vez
+    // para siempre: el registro impediría volver a sumarla.
+    try {
+      localStorage.setItem(CLAVE_LOCAL, JSON.stringify(disenoSerializable(diseno)));
+      localStorage.setItem(CLAVE_INYECTADAS, JSON.stringify([...ya]));
+    } catch (e) { /* sin storage */ }
+  }
+  return sumadas;
 }
 
 // Las salas automáticas no guardan sus muebles: se regeneran de los datos. Sin
 // esto, el localStorage (y el layout.json exportado) se llenarían de pizarrones
 // congelados con los montos del día que se exportó.
-function disenoSerializable() {
-  return { salas: DISENO.salas.map((s) => (salaEsAuto(s) ? { ...s, objetos: [] } : s)) };
+function disenoSerializable(diseno) {
+  return { salas: (diseno || DISENO).salas.map((s) => (salaEsAuto(s) ? { ...s, objetos: [] } : s)) };
 }
 
 // ---------- render ----------
@@ -1797,10 +1835,17 @@ function dominioDe(url) {
   try { return url ? new URL(url).hostname : ""; } catch (e) { return ""; }
 }
 
+let salasSumadas = [];
+
 function actualizarPie() {
-  document.getElementById("pie-estado").textContent = layoutEsLocal
+  const base = layoutEsLocal
     ? "estás viendo tu boceto local (guardado sólo en este navegador)"
     : "vista oficial (layout.json)";
+  // Si aparecieron salas que no estaban, se dice: una pestaña nueva sin
+  // explicación es exactamente lo que hace dudar de si algo se borró.
+  document.getElementById("pie-estado").textContent = salasSumadas.length
+    ? `${base} · se agregaron del oficial: ${salasSumadas.join(", ")}`
+    : base;
 }
 
 // ---------- interacción: colocar / seleccionar / arrastrar ----------
@@ -2464,14 +2509,15 @@ async function iniciar() {
   programarEstado();
 
   const local = cargarLayoutLocal();
+  const oficial = await cargarLayoutOficialCrudo();
   if (local) {
     DISENO = local;
     layoutEsLocal = true;
+    salasSumadas = asegurarSalasOficiales(DISENO, oficial);
   } else {
-    DISENO = await cargarLayoutOficial();
+    DISENO = oficial || layoutPorDefecto();
     layoutEsLocal = false;
   }
-  asegurarSalaPayroll(DISENO);
   actualizarPie();
   activarSala(localStorage.getItem(CLAVE_SALA)); // si no existe, cae a la primera
   tvArrancar();

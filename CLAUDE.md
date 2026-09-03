@@ -228,10 +228,8 @@ tocar esto:
   y el `layout.json` exportado quedarían con pizarrones **congelados con los
   montos del día que se exportó** — datos viejos que después nadie entiende de
   dónde salieron.
-- La sala se inyecta **una vez** en un boceto local ya diseñado
-  (`asegurarSalaPayroll`, flag `fibot-oficina-payroll-v1`): quien tenga su
-  propio layout en el navegador jamás vería una sala nueva del `layout.json`
-  oficial. El flag hace que borrarla a propósito no la reviva.
+- La sala se inyecta en un boceto local ya diseñado (ver "Salas nuevas en un
+  boceto viejo"). Payroll fue el primer caso; hoy el mecanismo es general.
 
 Cada pizarrón muestra **`a_pagar`** (lo medido le gana al estimado, porque es
 el número real del mes), el estado como badge (`pagado` verde,
@@ -249,6 +247,35 @@ escritura financiera más, disponible desde el navegador; no vale la pena.
 
 Sin `OFICINA_API` (Etapa 1) o si el fetch falla, la sala muestra un pizarrón
 que lo explica; el resto de la oficina sigue igual.
+
+## Salas nuevas en un boceto viejo (sep 2026)
+
+**Un boceto local le gana al `layout.json`**, así que una sala agregada al
+oficial *después* de que alguien guardó el suyo no aparece nunca — y el que la
+guardó no tiene cómo enterarse. No es hipotético: Cantarini y LODTE se sumaron
+en el PR #12 y en el navegador de Nacho no estaban; sólo Payroll aparecía,
+porque se inyectaba a mano con un flag propio.
+
+`asegurarSalasOficiales(diseno, oficial)` generaliza aquel parche: al cargar un
+boceto local suma cualquier sala del oficial que falte, **una vez cada una**.
+
+- El registro (`fibot-oficina-salas-inyectadas`) recuerda cuáles ya ofreció,
+  así **borrar una a propósito no la revive**. Migra el flag viejo
+  `fibot-oficina-payroll-v1` para que quien ya tenía Payroll no la reciba dos
+  veces.
+- **El registro y el boceto se escriben juntos.** Anotar "ya la ofrecí" sin
+  guardar la sala la haría desaparecer en la carga siguiente, esta vez para
+  siempre — el registro impediría volver a sumarla. Ese bug existió durante
+  media hora y lo encontró el test, no la lectura del código.
+- Se inyecta desde el `layout.json` **real**, no desde `layoutPorDefecto()`:
+  por eso hay un `cargarLayoutOficialCrudo()` que devuelve `null` si el fetch
+  falla. Si no, una caída de red le metería salas inventadas al boceto del
+  dueño y quedarían registradas como ya ofrecidas.
+- El pie dice qué se sumó, una sola vez.
+
+Probado con Playwright (`scratchpad/test-salas.mjs` de la sesión, no está en el
+repo): boceto viejo con sala propia, segunda carga, sala borrada a mano,
+navegador limpio, `layout.json` caído y el navegador con el flag viejo.
 
 ## Modo TV — la oficina en una pantalla de pared (sep 2026)
 
