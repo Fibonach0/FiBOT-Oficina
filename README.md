@@ -36,6 +36,15 @@ Tabernero). Desde Modo diseño → **Contratar agente** se suma uno nuevo
 (nombre, qué hace, repo, palabras clave): FiBOT lo conoce al instante y
 aparece con escritorio y avatar; "Descargar agents.json" lo deja oficial.
 
+## Payroll
+
+La sala **Payroll** es un pizarrón por servicio que pagás (Railway, Anthropic,
+proxies, dominios) con cuánto va del mes, qué falta pagar y qué vence pronto,
+más los totales por moneda. Se dibuja sola con lo que sabe FiBOT: para dar de
+alta un servicio o marcar un pago, se lo decís por chat ("Railway me sale 20
+dólares por mes y vence el 5", "pagué el proxy") y el pizarrón aparece o cambia
+solo. No se edita desde el modo diseño.
+
 ## Carteles y apariencia
 
 Los **carteles** son pizarras que abren un sitio al hacerles click (Railway,

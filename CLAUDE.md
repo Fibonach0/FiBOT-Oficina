@@ -206,6 +206,50 @@ Personal-FiBOT para delegar (`OFICINA_AGENTES_DEFAULT`): si se renombra uno
 acá hay que renombrarlo allá, o las tareas no matchean escritorio. `repo`
 sólo va en los públicos (fibot.ar, LODTE-Game, FiBOT-Oficina, Consultorio).
 
+## Payroll — el piso de los costos (sep 2026)
+
+Cuarta sala, **Payroll**: un pizarrón por servicio que Nacho paga (hosting,
+APIs, proxies, dominios) con lo estimado, lo medido y lo pagado del mes, más un
+pizarrón de totales por moneda. Lee `GET {OFICINA_API}/oficina/costos` con el
+mismo `Bearer` de la puerta, cada minuto junto con el estado.
+
+**Es una sala *automática* y esa es la idea entera**: `auto: "costos"` en
+`layout.json`, `objetos` vacío, y `objetosDeCostos()` los regenera en cada
+`render()` desde los datos. Cuando el dueño da de alta un servicio por chat
+("Railway me sale 20 dólares por mes y vence el 5"), el pizarrón aparece solo —
+no hay que pasar por el modo diseño. Consecuencias que hay que respetar al
+tocar esto:
+
+- El modo diseño está **desactivado dentro de esta sala** (paleta oculta,
+  arrastre y colocación bloqueados con `salaEsAuto(LAYOUT)`, sin "Renombrar").
+  Colocar algo a mano no tendría sentido: el próximo render lo borra.
+- `guardarLocal()` y **Descargar layout.json** pasan por `disenoSerializable()`,
+  que vacía los `objetos` de las salas automáticas. Sin eso, el `localStorage`
+  y el `layout.json` exportado quedarían con pizarrones **congelados con los
+  montos del día que se exportó** — datos viejos que después nadie entiende de
+  dónde salieron.
+- La sala se inyecta **una vez** en un boceto local ya diseñado
+  (`asegurarSalaPayroll`, flag `fibot-oficina-payroll-v1`): quien tenga su
+  propio layout en el navegador jamás vería una sala nueva del `layout.json`
+  oficial. El flag hace que borrarla a propósito no la reviva.
+
+Cada pizarrón muestra **`a_pagar`** (lo medido le gana al estimado, porque es
+el número real del mes), el estado como badge (`pagado` verde,
+`vence_pronto` naranja, `vencido` rojo, `por uso` para un servicio sin día
+fijo), cuándo vence en DD/MM, y una barra de consumido sobre estimado que se
+pone naranja al pasarse. El `title` dice **cuándo se midió** y con qué fuente:
+los datos de facturación no son de tiempo real, así que se dice en vez de
+fingirlo.
+
+**El piso es de sólo lectura a propósito.** Dar de alta un servicio o marcar un
+pago se hace hablándole a FiBOT (tools `alta_servicio` /
+`registrar_pago_servicio`, owner-only) — la nota al lado de las pestañas lo
+dice. Meter un POST de "marcar pagado" acá significaría un endpoint de
+escritura financiera más, disponible desde el navegador; no vale la pena.
+
+Sin `OFICINA_API` (Etapa 1) o si el fetch falla, la sala muestra un pizarrón
+que lo explica; el resto de la oficina sigue igual.
+
 ## Contratar agentes
 
 Modo diseño → **Contratar agente**: nombre, qué hace, repo (opcional),

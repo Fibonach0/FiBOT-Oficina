@@ -322,6 +322,18 @@
           "y": 2
         }
       ]
+    },
+    {
+      "id": "payroll",
+      "nombre": "Payroll",
+      "auto": "costos",
+      "_readme": "Sala automática: los pizarrones NO se colocan a mano, se generan de GET /oficina/costos (un servicio por pizarrón + los totales por moneda). Por eso 'objetos' va vacío: lo que se guarde acá se pisa en cada render.",
+      "grid": {
+        "cols": 5,
+        "rows": 1,
+        "cell": 170
+      },
+      "objetos": []
     }
   ]
 }

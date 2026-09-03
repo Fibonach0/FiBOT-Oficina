@@ -232,6 +232,26 @@
   .cartel-icono { font-size: 1.45rem; line-height: 1; }
   .cartel-titulo { font-size: .66rem; font-weight: 800; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cartel-vacio { color: var(--muted); }
+  /* pizarrones de payroll: tiza sobre pizarra, marco de madera como los carteles */
+  .pizarron { width: 150px; height: 136px; background: #24352b; border: 5px solid var(--wood-dark); border-radius: 6px; box-shadow: 0 3px 0 #8a6d2f, inset 0 0 24px rgba(0,0,0,.35); color: #f2efe4; padding: 6px 7px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .pz-nombre { font-size: .68rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .92; }
+  .pz-monto { font-size: 1.02rem; font-weight: 800; line-height: 1.05; white-space: nowrap; }
+  .pz-monto small { font-size: .6rem; font-weight: 700; opacity: .7; margin-right: 2px; }
+  .pz-linea { font-size: .62rem; opacity: .78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pz-badge { align-self: flex-start; font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; border-radius: 999px; padding: 1px 7px; background: rgba(255,255,255,.16); }
+  .pz-badge.pagado { background: #3f7d4a; }
+  .pz-badge.vence_pronto { background: var(--orange); }
+  .pz-badge.vencido { background: #b4342b; }
+  .pz-barra { height: 5px; border-radius: 999px; background: rgba(255,255,255,.16); overflow: hidden; margin-top: auto; }
+  .pz-barra i { display: block; height: 100%; background: #cfe3c8; }
+  .pz-barra.excedido i { background: var(--orange); }
+  .pizarron.total { background: #2b2a3a; }
+  .pizarron.total .pz-nombre { font-size: .62rem; }
+  .pizarron.total .pz-monto { font-size: .95rem; }
+  .pz-total-fila { display: flex; justify-content: space-between; gap: 6px; font-size: .6rem; opacity: .85; }
+  .pz-total-fila b { font-weight: 800; }
+  .pz-vacio { font-size: .62rem; line-height: 1.35; opacity: .82; }
+  .sala-nota { font-size: .78rem; color: var(--muted); margin: 0 0 8px; }
   .sel-campo { display: block; font-size: .78rem; font-weight: 700; margin-bottom: 6px; }
   .sel-campo input { width: 100%; box-sizing: border-box; font: inherit; font-size: .82rem; padding: 5px 7px; border: 1px solid var(--rule); border-radius: 6px; margin-top: 2px; }
   /* editor de apariencia (Open Peeps) */
@@ -1140,6 +1160,25 @@ const ESTADOS_VIVOS = {
   inactivo: { texto: "Sin actividad", clase: "inactivo" },
 };
 
+// El piso de payroll lee GET {api}/oficina/costos con el MISMO token de la
+// puerta: un servicio por pizarrón, con lo estimado, lo medido y lo pagado del
+// mes. Los datos de facturación no son de tiempo real (los escribe el bot
+// cuando una API le contesta), así que cada pizarrón dice cuándo se midió en
+// vez de fingir que corre en vivo.
+let COSTOS = null;
+
+async function cargarCostos() {
+  if (!OFICINA_API) return null;
+  try {
+    const s = leerSesion();
+    const r = await fetch(OFICINA_API + "/oficina/costos", { headers: { Authorization: "Bearer " + (s ? s.access_token : "") } });
+    if (!r.ok) throw new Error("costos " + r.status);
+    return await r.json();
+  } catch (e) {
+    return null; // sin datos los pizarrones lo dicen; nada más se rompe
+  }
+}
+
 function estadoVivoDe(agenteId) {
   return (ESTADO && ESTADO.agentes && ESTADO.agentes[agenteId]) || null;
 }
@@ -1164,7 +1203,10 @@ function programarEstado() {
   if (!OFICINA_API) return; // la muestra estática no cambia sola
   setInterval(async () => {
     const nuevo = await cargarEstado();
-    if (nuevo) { ESTADO = nuevo; vidaEstadoNuevo(); render(); }
+    if (nuevo) { ESTADO = nuevo; vidaEstadoNuevo(); }
+    const costos = await cargarCostos();
+    if (costos) COSTOS = costos;
+    if (nuevo || costos) render();
   }, ESTADO_CADA_MS);
 }
 
@@ -1245,7 +1287,7 @@ function cargarLayoutLocal() {
 }
 
 function guardarLocal() {
-  localStorage.setItem(CLAVE_LOCAL, JSON.stringify(DISENO));
+  localStorage.setItem(CLAVE_LOCAL, JSON.stringify(disenoSerializable()));
   layoutEsLocal = true;
   actualizarPie();
 }
@@ -1260,6 +1302,9 @@ function activarSala(id) {
   seleccionId = null;
   herramientaArmada = null;
   render();
+  // Entrar al piso de payroll sin datos todavía (primer arranque, o un fetch que
+  // falló): se piden y se redibuja cuando llegan.
+  if (salaEsAuto(LAYOUT) && !COSTOS) cargarCostos().then((c) => { if (c) { COSTOS = c; render(); } });
 }
 
 function agregarSala() {
@@ -1300,7 +1345,26 @@ function renderSalas() {
     b.addEventListener("click", () => activarSala(s.id));
     cont.appendChild(b);
   });
+  if (salaEsAuto(LAYOUT)) {
+    const nota = document.createElement("span");
+    nota.className = "sala-nota";
+    nota.textContent = COSTOS
+      ? `Se dibuja solo con lo que sabe FiBOT · período ${COSTOS.periodo}. Para dar de alta un servicio o marcar un pago, decíselo por chat.`
+      : "Se dibuja solo con lo que sabe FiBOT.";
+    cont.appendChild(nota);
+  }
   if (!modoDiseno) return;
+  if (salaEsAuto(LAYOUT)) {
+    const acciones2 = [["+ Sala", agregarSala, "btn-sala-agregar"]];
+    if (DISENO.salas.length > 1) acciones2.push(["Eliminar sala", eliminarSala, "btn-sala-eliminar"]);
+    acciones2.forEach(([texto, fn, id]) => {
+      const b = document.createElement("button");
+      b.className = "sala-accion"; b.textContent = texto; b.id = id;
+      b.addEventListener("click", fn);
+      cont.appendChild(b);
+    });
+    return; // no se renombra ni se le colocan muebles: es una sala generada
+  }
   const acciones = [["+ Sala", agregarSala, "btn-sala-agregar"], ["Renombrar", renombrarSala, "btn-sala-renombrar"]];
   if (DISENO.salas.length > 1) acciones.push(["Eliminar sala", eliminarSala, "btn-sala-eliminar"]);
   acciones.forEach(([texto, fn, id]) => {
@@ -1311,11 +1375,96 @@ function renderSalas() {
   });
 }
 
+// ---------- el piso de payroll ----------
+// Es una sala "automática": sus pizarrones NO se colocan a mano, se generan de
+// lo que devuelve /oficina/costos. Así, cuando el dueño da de alta un servicio
+// por chat, el pizarrón aparece solo — sin pasar por el modo diseño.
+const SALA_COSTOS = "payroll";
+const COSTOS_COLS = 5;
+
+function salaEsAuto(sala) { return !!(sala && sala.auto === "costos"); }
+
+function plataFmt(n, moneda) {
+  const v = Number(n || 0);
+  return `${moneda} ${v.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// En un pizarrón chico la fecha ISO no entra: DD/MM alcanza (el año se sabe).
+function fechaCorta(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}` : String(iso || "");
+}
+
+const COSTOS_BADGE = {
+  pagado: "pagado",
+  al_dia: "al día",
+  vence_pronto: "vence pronto",
+  vencido: "vencido",
+  sin_vencimiento: "por uso",
+};
+
+// Los objetos de la sala se recalculan en cada render: uno por servicio activo,
+// más un pizarrón de totales por moneda al principio.
+function objetosDeCostos() {
+  const objetos = [];
+  const poner = (o) => {
+    o.x = objetos.length % COSTOS_COLS;
+    o.y = Math.floor(objetos.length / COSTOS_COLS);
+    objetos.push(o);
+  };
+  if (!COSTOS) {
+    poner({ id: "pz-sin-datos", tipo: "pizarron-aviso", texto: OFICINA_API ? "No pude leer los costos. Puede que la sesión haya caducado: volvé a entrar." : "Sin conexión con FiBOT: el payroll necesita la API." });
+    return objetos;
+  }
+  Object.entries(COSTOS.totales || {}).forEach(([moneda, t]) => {
+    poner({ id: "pz-total-" + moneda, tipo: "pizarron-total", moneda, totales: t, periodo: COSTOS.periodo });
+  });
+  (COSTOS.servicios || []).forEach((sv) => poner({ id: "pz-" + sv.id, tipo: "pizarron-costo", servicio: sv }));
+  if (!(COSTOS.servicios || []).length) {
+    poner({ id: "pz-vacio", tipo: "pizarron-aviso", texto: "Todavía no hay servicios cargados. Decile a FiBOT por chat: «Railway me sale 20 dólares por mes y vence el 5»." });
+  }
+  return objetos;
+}
+
+// El grid de la sala se estira para que entren todos los pizarrones.
+function ajustarGridCostos(sala, objetos) {
+  sala.grid.cols = COSTOS_COLS;
+  sala.grid.rows = Math.max(1, Math.ceil(objetos.length / COSTOS_COLS));
+  sala.grid.cell = 170;
+}
+
+function salaCostosPorDefecto() {
+  return { id: SALA_COSTOS, nombre: "Payroll", auto: "costos", grid: { cols: COSTOS_COLS, rows: 1, cell: 170 }, objetos: [] };
+}
+
+// La sala se agrega UNA vez, también sobre un boceto local ya diseñado (si no,
+// quien tenga su propio layout en el navegador nunca vería el piso nuevo). El
+// flag recuerda que ya se agregó, así borrarla a propósito no la revive.
+const CLAVE_PAYROLL = "fibot-oficina-payroll-v1";
+function asegurarSalaPayroll(diseno) {
+  if (!diseno || !Array.isArray(diseno.salas)) return;
+  if (diseno.salas.some((s) => s.id === SALA_COSTOS)) return;
+  try { if (localStorage.getItem(CLAVE_PAYROLL)) return; } catch (e) { /* sin storage */ }
+  diseno.salas.push(salaCostosPorDefecto());
+  try { localStorage.setItem(CLAVE_PAYROLL, "1"); } catch (e) { /* sin storage */ }
+}
+
+// Las salas automáticas no guardan sus muebles: se regeneran de los datos. Sin
+// esto, el localStorage (y el layout.json exportado) se llenarían de pizarrones
+// congelados con los montos del día que se exportó.
+function disenoSerializable() {
+  return { salas: DISENO.salas.map((s) => (salaEsAuto(s) ? { ...s, objetos: [] } : s)) };
+}
+
 // ---------- render ----------
 
 const tablero = document.getElementById("tablero");
 
 function render() {
+  if (salaEsAuto(LAYOUT)) {
+    LAYOUT.objetos = objetosDeCostos();
+    ajustarGridCostos(LAYOUT, LAYOUT.objetos);
+  }
   const { cols, rows, cell } = LAYOUT.grid;
   tablero.style.width = cols * cell + "px";
   tablero.style.height = rows * cell + "px";
@@ -1383,6 +1532,42 @@ function elementoDe(obj) {
       ? `<span class="cartel-icono">${escaparHTML(obj.icono)}</span>`
       : (dominio ? `<img class="cartel-fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=64" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'cartel-icono',textContent:'🔗'}))">` : `<span class="cartel-icono">🔗</span>`);
     el.innerHTML = `<div class="cuerpo" ${giro}><div class="cartel" title="${escaparHTML(obj.url || "sin link todavía")}">${icono}<div class="cartel-titulo${obj.titulo ? "" : " cartel-vacio"}">${escaparHTML(obj.titulo || "Cartel")}</div></div></div>`;
+  } else if (obj.tipo === "pizarron-costo") {
+    const sv = obj.servicio;
+    const badge = COSTOS_BADGE[sv.estado] || sv.estado;
+    const cuando = sv.pagado && sv.pagado_at
+      ? `pagado ${tiempoRelativo(sv.pagado_at)}`
+      : sv.vence
+        ? (sv.dias_para_vencer < 0
+            ? `venció el ${fechaCorta(sv.vence)} (${-sv.dias_para_vencer} d)`
+            : `vence el ${fechaCorta(sv.vence)} · ${sv.dias_para_vencer === 0 ? "hoy" : "en " + sv.dias_para_vencer + " d"}`)
+        : "se paga por uso";
+    // La barra compara lo medido contra lo estimado: pasarse se ve naranja.
+    const barra = sv.consumido != null && sv.estimado
+      ? `<div class="pz-barra${sv.consumido > sv.estimado ? " excedido" : ""}" title="${escaparHTML(plataFmt(sv.consumido, sv.moneda))} medido sobre ${escaparHTML(plataFmt(sv.estimado, sv.moneda))} estimado"><i style="width:${Math.min(100, Math.round((sv.consumido / sv.estimado) * 100))}%"></i></div>`
+      : "";
+    const medido = sv.medido_at
+      ? `medido ${tiempoRelativo(sv.medido_at)}${sv.consumo_fuente && sv.consumo_fuente !== "manual" ? " · " + sv.consumo_fuente : ""}`
+      : "sin medición: se muestra el estimado";
+    el.innerHTML = `<div class="pizarron" title="${escaparHTML(medido)}${sv.metodo_pago ? " · " + escaparHTML(sv.metodo_pago) : ""}">
+      <div class="pz-nombre">${escaparHTML(sv.nombre)}</div>
+      <div class="pz-monto"><small>${escaparHTML(sv.moneda)}</small>${escaparHTML(Number(sv.a_pagar || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</div>
+      <div class="pz-badge ${escaparHTML(sv.estado)}">${escaparHTML(badge)}</div>
+      <div class="pz-linea">${escaparHTML(cuando)}</div>
+      ${barra}
+    </div>`;
+  } else if (obj.tipo === "pizarron-total") {
+    const t = obj.totales;
+    const total = (t.pagado || 0) + (t.pendiente || 0);
+    el.innerHTML = `<div class="pizarron total" title="Período ${escaparHTML(obj.periodo)}">
+      <div class="pz-nombre">Total ${escaparHTML(obj.moneda)} · ${escaparHTML(obj.periodo)}</div>
+      <div class="pz-monto"><small>falta</small>${escaparHTML(Number(t.pendiente || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</div>
+      <div class="pz-total-fila"><span>del mes</span><b>${escaparHTML(plataFmt(total, obj.moneda))}</b></div>
+      <div class="pz-total-fila"><span>ya pagado</span><b>${escaparHTML(plataFmt(t.pagado, obj.moneda))}</b></div>
+      <div class="pz-total-fila"><span>medido</span><b>${escaparHTML(plataFmt(t.consumido, obj.moneda))}</b></div>
+    </div>`;
+  } else if (obj.tipo === "pizarron-aviso") {
+    el.innerHTML = `<div class="pizarron"><div class="pz-vacio">${escaparHTML(obj.texto)}</div></div>`;
   } else if (obj.tipo === "cuadro") {
     const adm = ESTADO && ESTADO.agente_del_mes;
     const ag = adm ? AGENTES.find((a) => a.id === adm.id) : null;
@@ -1407,7 +1592,9 @@ function estadoDe(obj) {
 
 function renderPaleta() {
   const paleta = document.getElementById("paleta");
-  paleta.classList.toggle("visible", modoDiseno);
+  // En una sala automática no hay nada que colocar: los pizarrones salen de los
+  // datos, no del diseño.
+  paleta.classList.toggle("visible", modoDiseno && !salaEsAuto(LAYOUT));
   const lista = document.getElementById("lista-paleta");
   lista.innerHTML = "";
   PALETA.forEach((p) => {
@@ -1530,7 +1717,7 @@ function aplicarPincel(celda) {
 }
 
 tablero.addEventListener("pointerdown", (e) => {
-  if (!modoDiseno || !PINCELES.has(herramientaArmada)) return;
+  if (!modoDiseno || salaEsAuto(LAYOUT) || !PINCELES.has(herramientaArmada)) return;
   e.preventDefault();
   e.stopPropagation(); // que el objeto de abajo no arranque un arrastre
   pintando = { tipo: herramientaArmada, ultimaCelda: null, cambio: false };
@@ -1568,7 +1755,7 @@ function abrirPanelIsla(obj) {
 
 tablero.addEventListener("click", (e) => {
   if (e.target !== tablero) return; // clicks en objetos los maneja onClickObjeto
-  if (!modoDiseno || !herramientaArmada) {
+  if (!modoDiseno || !herramientaArmada || salaEsAuto(LAYOUT)) {
     seleccionId = null;
     render();
     return;
@@ -1613,7 +1800,7 @@ function onClickObjeto(e, obj) {
 }
 
 function onPointerDown(e, obj) {
-  if (!modoDiseno) return;
+  if (!modoDiseno || salaEsAuto(LAYOUT)) return;
   e.preventDefault();
   e.stopPropagation();
   const el = e.currentTarget;
@@ -1746,7 +1933,7 @@ document.getElementById("btn-modo").addEventListener("click", () => {
 });
 
 document.getElementById("btn-exportar").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(DISENO, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(disenoSerializable(), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -2144,6 +2331,7 @@ async function iniciar() {
   AVATARES = await cargarAvatares();
   aplicarOverridesAvatares();
   ESTADO = await cargarEstado();
+  COSTOS = await cargarCostos();
   programarEstado();
 
   const local = cargarLayoutLocal();
@@ -2154,6 +2342,7 @@ async function iniciar() {
     DISENO = await cargarLayoutOficial();
     layoutEsLocal = false;
   }
+  asegurarSalaPayroll(DISENO);
   actualizarPie();
   activarSala(localStorage.getItem(CLAVE_SALA)); // si no existe, cae a la primera
   vidaEstadoNuevo(); // deja anotada la tarea actual de cada uno (sin disparar cafés)
