@@ -250,6 +250,57 @@ escritura financiera más, disponible desde el navegador; no vale la pena.
 Sin `OFICINA_API` (Etapa 1) o si el fetch falla, la sala muestra un pizarrón
 que lo explica; el resto de la oficina sigue igual.
 
+## Modo TV — la oficina en una pantalla de pared (sep 2026)
+
+`?tv=1` deja la oficina mirable a tres metros: sin botones, sin pestañas, sin
+pie, el piso escalado a la pantalla entera y las salas **rotando solas**.
+Parámetros: `&cada=40` (segundos por sala, default 25) y
+`&salas=principal,payroll` (cuáles y en qué orden).
+
+**Es una vista aparte, no un rediseño**: sin el parámetro no cambia una coma.
+
+Detalles que costaron encontrarse y conviene no re-descubrir:
+
+- El piso tiene medidas fijas en píxeles (`cols × cell`), así que se escala
+  entero con `transform: scale()`. Eso arrastra también a los muñecos de la
+  capa de vida, que están posicionados **dentro** del tablero y no sobre la
+  pantalla — por eso no hay que tocarlos aparte.
+- Entre `.escena` y `.tablero-envoltorio` hay una `.columna-tablero` que no es
+  flex, y `.escena` usa `align-items: flex-start`. Con eso el marco queda del
+  alto de su contenido: la sala de Payroll, que es una sola fila, se dibujaba
+  en una fajita de 170 px arriba de una tele de 1080 y la escala calculaba
+  contra ese hueco. En modo TV las dos cosas se estiran.
+- La escala tiene tope de 3: una sala con dos pizarrones tiene lugar para
+  agrandarse seis veces y a esa altura se lee como un cartel de ruta.
+- La rotación **no pisa** `CLAVE_SALA`: la tele es una vista, no una
+  preferencia del dueño.
+- La hora del último dato está siempre a la vista y se pone en rojo a los 5
+  minutos. Un tablero de pared miente callado: si el sondeo se cortó, sigue
+  mostrando lo de hace una hora con la misma cara.
+- Wake Lock mientras la pestaña esté visible, re-pedido al volver del fondo.
+  Si el navegador de la tele no lo soporta, hay que apagar el suspendido en
+  las opciones del televisor.
+
+### Cómo llega a la tele
+
+Dos caminos, y el modo TV hace falta para los dos:
+
+1. **Castear la pestaña** desde Chrome (⋮ → Enviar → Enviar pestaña). Anda
+   hoy, cero código: la tele recibe píxeles de una sesión **ya iniciada**, así
+   que no hay problema de login. El costo es que la máquina queda prendida con
+   la pestaña abierta.
+2. **Un receiver de Google Cast** (pendiente): libera la máquina, pero la tele
+   carga la URL sola, sin cookie y sin `localStorage`. Ahí vuelve el login, y
+   la salida es que el sender —donde el dueño SÍ está logueado— mintee un token
+   de pantalla y se lo pase al receiver por el canal de Cast, sin que nadie
+   tipee nada con el control. Requiere registrar el receiver en la Cast SDK
+   Developer Console (US$5 una vez). Samsung y LG tienen Google Cast nativo
+   desde 2024–2026 según modelo y firmware, así que conviene **confirmar que
+   la tele aparece en la lista de "Enviar" de Chrome antes de gastar nada**.
+
+Ni esta página ni el patio mandan `X-Frame-Options` ni CSP, así que el
+receiver puede mostrarlas en un `<iframe>` — verificado antes de escribir esto.
+
 ## Contratar agentes
 
 Modo diseño → **Contratar agente**: nombre, qué hace, repo (opcional),
