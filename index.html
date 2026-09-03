@@ -123,6 +123,36 @@
   .panel-seleccion h4 { margin: 0 0 8px; font-size: .88rem; }
   .panel-seleccion select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--rule); margin-bottom: 8px; }
 
+  /* -------- modo TV (?tv=1): la oficina en una pantalla grande, a 3 metros --
+     Nada de esto se activa sin el parámetro: es una vista aparte, no un
+     rediseño de la oficina normal. */
+  body.tv { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body.tv header { padding: 10px 24px; }
+  body.tv header h1 { font-size: 2.6rem; }
+  body.tv #subtitulo,
+  body.tv .barra-acciones,
+  body.tv footer,
+  body.tv .paleta,
+  body.tv .salas { display: none; }
+  /* `align-items: flex-start` (el de la oficina normal) deja el marco del alto
+     de su contenido: una sala de pocos muebles quedaba en una fajita arriba y
+     la escala creía que había 170px de alto. En la tele el marco se estira. */
+  body.tv .escena { flex: 1; min-height: 0; margin: 0 16px 16px; align-items: stretch; }
+  /* Entre .escena y el marco hay una columna que NO es flex: sin esto el
+     marco queda del alto de su contenido y una sala de pocos muebles se
+     dibuja en una fajita arriba de la pantalla. */
+  body.tv .columna-tablero { display: flex; flex-direction: column; min-height: 0; }
+  body.tv .tablero-envoltorio { overflow: hidden; flex: 1; min-height: 0; }
+  /* El nombre de la sala reemplaza a las pestañas: en una tele no se hace
+     click, así que la pestaña activa no informa — el nombre grande sí. */
+  .tv-sala { font-family: "VT323", monospace; font-size: 2.6rem; color: var(--wood-dark); letter-spacing: 1px; }
+  /* Un tablero de pared miente callado: si el sondeo se cortó, la pantalla
+     sigue mostrando lo de hace una hora como si fuera de ahora. Por eso la
+     hora del último dato está SIEMPRE a la vista, y se pone en rojo cuando
+     envejece. */
+  .tv-reloj { font-family: "VT323", monospace; font-size: 1.9rem; color: var(--muted); }
+  .tv-reloj.viejo { color: #b4342b; }
+
   /* -------- tablero -------- */
   .tablero-envoltorio { overflow: auto; border-radius: 14px; border: 3px solid var(--wood-dark); box-shadow: inset 0 0 0 6px var(--wood); flex: 1; }
   .tablero {
@@ -361,6 +391,8 @@
     <h1>Oficina FiBOT</h1>
     <p id="subtitulo">Panel personal — en qué anda cada frente, de un vistazo.</p>
   </div>
+  <div class="tv-sala" id="tv-sala" style="display:none;"></div>
+  <div class="tv-reloj" id="tv-reloj" style="display:none;"></div>
   <div class="barra-acciones">
     <button class="btn" id="btn-fibot">Pedirle a FiBOT</button>
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
@@ -1298,7 +1330,9 @@ const CLAVE_SALA = "fibot-oficina-sala";
 
 function activarSala(id) {
   LAYOUT = DISENO.salas.find((s) => s.id === id) || DISENO.salas[0];
-  try { localStorage.setItem(CLAVE_SALA, LAYOUT.id); } catch (e) { /* sin storage */ }
+  // En modo TV la rotación NO pisa la última sala que el dueño eligió a mano:
+  // la tele es una vista, no una preferencia.
+  if (!TV) { try { localStorage.setItem(CLAVE_SALA, LAYOUT.id); } catch (e) { /* sin storage */ } }
   seleccionId = null;
   herramientaArmada = null;
   render();
@@ -1373,6 +1407,96 @@ function renderSalas() {
     b.addEventListener("click", fn);
     cont.appendChild(b);
   });
+}
+
+// ---------- modo TV: la oficina puesta en una pantalla de pared ------------
+// `?tv=1` la deja mirable a tres metros: sin botones, sin pestañas, el piso
+// escalado a la pantalla entera y las salas rotando solas. Existe porque las
+// dos formas de llevar esto a una tele lo necesitan igual — castear la
+// pestaña desde Chrome (la tele muestra píxeles de una sesión ya iniciada) o,
+// más adelante, un receiver de Google Cast que cargue la URL él mismo.
+//
+// Es una vista aparte y no un rediseño: sin el parámetro no cambia nada.
+//   ?tv=1               todas las salas, 25 s cada una
+//   &cada=40            segundos por sala
+//   &salas=principal,payroll   sólo esas, en ese orden
+const TV_PARAMS = new URLSearchParams(location.search);
+const TV = TV_PARAMS.has("tv") && TV_PARAMS.get("tv") !== "0";
+const TV_CADA = Math.max(5, Number(TV_PARAMS.get("cada")) || 25) * 1000;
+const TV_SALAS = (TV_PARAMS.get("salas") || "").split(",").map((x) => x.trim()).filter(Boolean);
+let tvGiro = null;
+
+// El piso tiene medidas fijas en píxeles (cols x cell). Para llenar una tele
+// se escala entero con transform, que arrastra también a los muñecos de la
+// capa de vida — posicionados dentro del tablero, no sobre la pantalla.
+function ajustarEscalaTV() {
+  if (!TV) return;
+  const env = document.querySelector(".tablero-envoltorio");
+  if (!env) return;
+  const w = LAYOUT.grid.cols * LAYOUT.grid.cell;
+  const h = LAYOUT.grid.rows * LAYOUT.grid.cell;
+  const dispW = env.clientWidth - 12, dispH = env.clientHeight - 12;
+  if (!(w > 0 && h > 0 && dispW > 0 && dispH > 0)) return;
+  // Tope de 3: una sala con dos pizarrones tiene lugar para agrandarse seis
+  // veces, y a esa altura se ve como un cartel de ruta, no como una oficina.
+  const k = Math.max(0.2, Math.min(dispW / w, dispH / h, 3));
+  tablero.style.transformOrigin = "top left";
+  tablero.style.transform = `scale(${k})`;
+  tablero.style.marginLeft = Math.max(0, (dispW - w * k) / 2) + "px";
+  tablero.style.marginTop = Math.max(0, (dispH - h * k) / 2) + "px";
+}
+
+// Cuándo se generó el dato que se está mostrando. En una pantalla de pared es
+// lo único que distingue "no pasa nada" de "el sondeo se cortó hace una hora".
+function tvActualizarReloj() {
+  if (!TV) return;
+  const el = document.getElementById("tv-reloj");
+  if (!el) return;
+  const iso = (ESTADO && ESTADO.generado) || null;
+  const ahora = new Date();
+  const hora = ahora.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (!iso) { el.textContent = hora + " · sin datos"; el.classList.add("viejo"); return; }
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  el.textContent = `${hora} · dato de hace ${min < 1 ? "menos de 1" : min} min`;
+  el.classList.toggle("viejo", min >= 5);
+}
+
+// La pantalla de una tele se apaga sola a los minutos. Wake Lock lo evita
+// mientras la pestaña esté visible; hay que volver a pedirlo cada vez que
+// vuelve del fondo, porque el navegador lo suelta al ocultarse. Si el
+// navegador de la tele no lo soporta, no pasa nada: hay que apagar el
+// suspendido en las opciones del televisor.
+let tvWakeLock = null;
+async function tvPedirWakeLock() {
+  if (!TV || !("wakeLock" in navigator)) return;
+  try {
+    tvWakeLock = await navigator.wakeLock.request("screen");
+    tvWakeLock.addEventListener("release", () => { tvWakeLock = null; });
+  } catch (e) { /* denegado o sin soporte: no es motivo para romper la vista */ }
+}
+
+function tvSalasAMostrar() {
+  const todas = DISENO.salas;
+  if (!TV_SALAS.length) return todas;
+  const elegidas = TV_SALAS.map((id) => todas.find((s) => s.id === id)).filter(Boolean);
+  return elegidas.length ? elegidas : todas;
+}
+
+function tvArrancar() {
+  if (!TV) return;
+  document.body.classList.add("tv");
+  document.getElementById("tv-sala").style.display = "";
+  document.getElementById("tv-reloj").style.display = "";
+  tvPedirWakeLock();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tvPedirWakeLock(); });
+  window.addEventListener("resize", ajustarEscalaTV);
+  setInterval(tvActualizarReloj, 30000);
+  const salas = tvSalasAMostrar();
+  activarSala(salas[0].id);
+  if (salas.length > 1) {
+    let i = 0;
+    tvGiro = setInterval(() => { i = (i + 1) % salas.length; activarSala(salas[i].id); }, TV_CADA);
+  }
 }
 
 // ---------- el piso de payroll ----------
@@ -1476,6 +1600,11 @@ function render() {
   renderSalas();
   renderPaleta();
   renderSeleccion();
+  if (TV) {
+    document.getElementById("tv-sala").textContent = LAYOUT.nombre;
+    tvActualizarReloj();
+    ajustarEscalaTV();
+  }
 }
 
 function elementoDe(obj) {
@@ -2345,6 +2474,7 @@ async function iniciar() {
   asegurarSalaPayroll(DISENO);
   actualizarPie();
   activarSala(localStorage.getItem(CLAVE_SALA)); // si no existe, cae a la primera
+  tvArrancar();
   vidaEstadoNuevo(); // deja anotada la tarea actual de cada uno (sin disparar cafés)
 }
 

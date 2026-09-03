@@ -45,6 +45,18 @@ alta un servicio o marcar un pago, se lo decís por chat ("Railway me sale 20
 dólares por mes y vence el 5", "pagué el proxy") y el pizarrón aparece o cambia
 solo. No se edita desde el modo diseño.
 
+## Ponerla en una tele
+
+`?tv=1` la deja mirable de lejos: sin botones ni pestañas, el piso ocupando la
+pantalla y las salas rotando solas. `&cada=40` cambia los segundos por sala y
+`&salas=principal,payroll` elige cuáles. Arriba a la derecha queda la hora del
+último dato, que se pone en rojo si el sondeo se cortó.
+
+Para llevarla a la tele hoy: Chrome → ⋮ → Enviar → Enviar pestaña. La tele
+recibe la imagen de tu sesión, así que no hay que loguearse desde el
+televisor. El botón de Cast en la propia página (para que la tele cargue sola
+y liberes la máquina) está pendiente.
+
 ## Carteles y apariencia
 
 Los **carteles** son pizarras que abren un sitio al hacerles click (Railway,
