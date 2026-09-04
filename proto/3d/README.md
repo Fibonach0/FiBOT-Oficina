@@ -76,6 +76,19 @@ son la prueba de nada.
   `ACTIVIDADES` (cafetera, heladera, dispenser, planta, sofá, pizarra, cuadro,
   ventana), la placa dice qué hace, y vuelve a sentarse. `?vida` acorta los
   tiempos para las pruebas.
+- **Un mueble lo usa uno por vez, y el resto hace fila.** Cada parada tiene
+  `ocupante` y `cola` (máximo 2). El que llega a un mueble ocupado va a la celda
+  disponible más cercana que NO sea pegada al mueble (un paso atrás, como una
+  cola de verdad), mira al mueble, cruza los brazos y la placa dice "espera
+  turno"; cuando el ocupante se va, el primero de la fila pasa a una celda
+  pegada. Si llega a la fila y el mueble ya se desocupó, pasa directo. Si
+  espera demasiado, se cansa y vuelve. Las celdas de destino se **reservan**
+  (`RESERVADAS`): dos personas nunca eligen la misma, ni para usar un mueble
+  ni para esperar. Bug que tuvo esto media hora: pasarle el turno a alguien
+  que **todavía venía caminando** hacia la fila lo dejaba con una ruta y una
+  fase incoherentes; ahora el turno queda anotado y avanza cuando llega. Y la
+  reserva se libera ANTES de pasar el turno, así el siguiente puede ocupar
+  justo la celda que se desocupa.
 
 - **La cara no puede ser un plano adelante de la cabeza.** Se ve como una
   careta puesta: se nota el borde y el aire entre medio. Va sobre un **casquete

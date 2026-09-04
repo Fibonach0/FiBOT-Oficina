@@ -609,9 +609,38 @@ function tramoDesdeSilla(p, celda) {
   if (celda[1] === p.desk.y) return [new THREE.Vector3(x, 0, p.base.z), new THREE.Vector3(x, 0, z)];
   return [new THREE.Vector3(x, 0, z)];
 }
+// Celdas reservadas: adónde va o dónde está parado cada uno. Dos personas no
+// eligen la misma celda, así no se amontonan en el mismo lugar.
+const RESERVADAS = new Map();
+function reservar(p, celda) {
+  if (p.reserva) RESERVADAS.delete(p.reserva);
+  p.reserva = celda ? celda[0] + "," + celda[1] : null;
+  if (p.reserva) RESERVADAS.set(p.reserva, p.id);
+}
+const disponible = (x, y) => libre(x, y) && !RESERVADAS.has(x + "," + y);
 function celdaJuntoA(o) {
-  const ops = VECINOS.map(([dx, dy]) => [o.x + dx, o.y + dy]).filter(([x, y]) => libre(x, y));
+  const ops = VECINOS.map(([dx, dy]) => [o.x + dx, o.y + dy]).filter(([x, y]) => disponible(x, y));
   return ops.length ? ops[Math.floor(Math.random() * ops.length)] : null;
+}
+// Dónde hacer la fila: la celda disponible más cercana al mueble que NO sea
+// pegada a él (un paso atrás, como en una cola de verdad). Si no hay, una pegada.
+function celdaDeEspera(o) {
+  const clave = (c) => c[0] + "," + c[1];
+  const frente = VECINOS.map(([dx, dy]) => [o.x + dx, o.y + dy]).filter(([x, y]) => libre(x, y));
+  const dist = new Map(frente.map((c) => [clave(c), 0]));
+  const cola = frente.slice();
+  let pegada = null;
+  while (cola.length) {
+    const c = cola.shift(), d = dist.get(clave(c));
+    if (disponible(c[0], c[1])) { if (d >= 1) return c; if (!pegada) pegada = c; }
+    if (d >= 4) continue;
+    for (const [dx, dy] of VECINOS) {
+      const n = [c[0] + dx, c[1] + dy];
+      if (!libre(n[0], n[1]) || dist.has(clave(n))) continue;
+      dist.set(clave(n), d + 1); cola.push(n);
+    }
+  }
+  return pegada;
 }
 // A qué mueble van y qué dicen mientras están ahí.
 const ACTIVIDADES = {
@@ -620,6 +649,11 @@ const ACTIVIDADES = {
   cuadro: ["🏆", "el próximo es mío"], ventana: ["🪟", "mirando afuera"],
 };
 const PARADAS = SALA.objetos.filter((o) => ACTIVIDADES[o.tipo]);
+// Un mueble lo usa una persona por vez: `ocupante` es quien lo tiene (o va en
+// camino) y `cola` los que esperan turno, en orden de llegada.
+for (const o of PARADAS) { o.ocupante = null; o.cola = []; }
+const ESPERA_TURNO = ["⏳", "espera turno"];
+const COLA_MAX = 2;
 // Quién se levanta: el que no tiene tarea en curso ni te está esperando, como
 // en la oficina. Los que laburan se quedan sentados.
 const seLevanta = (id) => !VIVO[id] || !["en_curso", "esperando_dueno"].includes(VIVO[id].estado);
@@ -635,18 +669,66 @@ for (const p of gente) {
   p.rumboObjetivo = 0;
 }
 function aPunto([gx, gy]) { const [x, z] = enPiso(gx, gy); return new THREE.Vector3(x, 0, z); }
-function salir(p) {
+function salir(p, elegido) {
   if (!PARADAS.length || !seLevanta(p.id)) return;
-  const o = PARADAS[Math.floor(Math.random() * PARADAS.length)];
-  const junto = celdaJuntoA(o);
-  const ruta = junto && camino(p.celda, junto, salidasDe(p.desk));
+  const o = elegido || PARADAS[Math.floor(Math.random() * PARADAS.length)];
+  // Ocupado y con la fila llena: no vale la pena, prueba más tarde con otro.
+  if (o.ocupante && o.cola.length >= COLA_MAX) { p.espera = azar(3, 10) * RITMO; return; }
+  const celda = o.ocupante ? celdaDeEspera(o) : celdaJuntoA(o);
+  const ruta = celda && camino(p.celda, celda, salidasDe(p.desk));
   if (!ruta) { p.espera = azar(3, 10) * RITMO; return; }  // sin camino: se queda y prueba más tarde
-  p.sentado = false; p.destinoObj = o; p.destinoCelda = junto;
+  p.sentado = false; p.destinoObj = o; p.destinoCelda = celda;
+  reservar(p, celda);
+  if (o.ocupante) { o.cola.push(p); p.fase = "yendoCola"; }
+  else { o.ocupante = p; p.fase = "yendo"; }
   p.ruta = tramoDesdeSilla(p, ruta[1]).concat(ruta.slice(2).map(aPunto));
   p.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
-  p.fase = "yendo";
+}
+// Se puso en la fila y llegó a su lugar: mira al mueble y espera. Si tarda
+// demasiado, se cansa y vuelve.
+function enCola(p) {
+  // Mientras venía, el mueble se desocupó y ya es su turno: pasa directo.
+  if (p.destinoObj.ocupante === p) { avanzarAlMueble(p); return; }
+  const [ox, oz] = enPiso(p.destinoObj.x, p.destinoObj.y);
+  p.rumboObjetivo = Math.atan2(ox - p.g.position.x, oz - p.g.position.z);
+  p.piernas.forEach((pi) => { pi.rotation.x = 0; });
+  p.brazos.forEach((b, i) => { b.hombro.rotation.x = -.6; b.codo.rotation.x = 1.6; b.hombro.rotation.z = (i ? 1 : -1) * .35; });
+  p.decir(ESPERA_TURNO);
+  p.espera = azar(25, 45) * RITMO; p.fase = "enCola";
+}
+// Le toca al siguiente de la fila. Si todavía viene caminando hacia la fila,
+// queda anotado como ocupante y avanza cuando llega (ver enCola); si ya está
+// parado, avanza ahora.
+function pasarTurno(o) {
+  const q = o.cola.shift();
+  o.ocupante = q || null;
+  if (q && !q.ruta.length) avanzarAlMueble(q);
+}
+// De la fila a una celda pegada al mueble. Si no hay ninguna libre, lo usa
+// desde donde está.
+function avanzarAlMueble(q) {
+  const o = q.destinoObj;
+  q.brazos.forEach((b) => { b.hombro.rotation.z = 0; });
+  q.decir(null);
+  const junto = celdaJuntoA(o);
+  const ruta = junto && camino(q.destinoCelda, junto);
+  if (!ruta) { llegar(q); return; }
+  reservar(q, junto); q.destinoCelda = junto;
+  q.ruta = ruta.slice(1).map(aPunto); q.fase = "yendo";
+  q.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
+}
+// Deja el mueble (o la fila). La reserva se libera ANTES de pasar el turno,
+// así el siguiente puede ocupar justo la celda que se desocupa.
+function soltar(p) {
+  const o = p.destinoObj;
+  reservar(p, null);
+  if (!o) return;
+  if (o.ocupante === p) pasarTurno(o);
+  else o.cola = o.cola.filter((q) => q !== p);
 }
 function volver(p) {
+  soltar(p);
+  p.brazos.forEach((b) => { b.hombro.rotation.z = 0; });
   // Se calcula desde el escritorio (para que valga la regla de por dónde se
   // entra) y se recorre al revés.
   const ida = camino(p.celda, p.destinoCelda, salidasDe(p.desk));
@@ -659,6 +741,7 @@ function volver(p) {
   p.fase = "volviendo";
 }
 function sentar(p) {
+  reservar(p, null); p.destinoObj = null;
   p.sentado = true; p.fase = "sentado";
   p.g.position.copy(p.base); p.rumbo = p.rumboObjetivo = 0; p.g.rotation.y = 0;
   p.piernas.forEach((pi) => { pi.rotation.x = 0; });
@@ -684,7 +767,10 @@ function paso(dt) {
       const obj = p.ruta[0];
       const dir = v3.copy(obj).sub(p.g.position); dir.y = 0;
       const dist = dir.length(), avance = dt * 1.1;
-      if (dist <= avance) { p.g.position.copy(obj); p.ruta.shift(); if (!p.ruta.length) (p.fase === "yendo" ? llegar : sentar)(p); }
+      if (dist <= avance) {
+        p.g.position.copy(obj); p.ruta.shift();
+        if (!p.ruta.length) ({ yendo: llegar, yendoCola: enCola, volviendo: sentar })[p.fase](p);
+      }
       else {
         dir.normalize(); p.g.position.addScaledVector(dir, avance);
         p.rumboObjetivo = Math.atan2(dir.x, dir.z);
@@ -696,7 +782,10 @@ function paso(dt) {
       }
     } else {
       p.espera -= dt;
-      if (p.espera <= 0) { if (p.fase === "parado") volver(p); else salir(p); }
+      if (p.espera <= 0) {
+        if (p.fase === "parado" || p.fase === "enCola") volver(p);   // en la fila: se cansó de esperar
+        else if (p.fase === "sentado") salir(p);
+      }
     }
     // Giro suave hacia el rumbo (por el camino corto, sin dar la vuelta larga).
     let d = p.rumboObjetivo - p.rumbo;
@@ -796,6 +885,6 @@ addEventListener("resize", () => {
 });
 // `?dbg` expone la escena para poder mirarla de cerca desde una prueba,
 // igual que `?vida` en la oficina de verdad. No cambia nada de lo que se ve.
-if (PARAMS.has("dbg")) Object.assign(window, { escena, camara, control, gente, render, paso, camino, libre, OCUPADO, enPiso, cols, rows, VIVO_: VIVO, seLevanta_: seLevanta });
+if (PARAMS.has("dbg")) Object.assign(window, { escena, camara, control, gente, render, paso, camino, libre, OCUPADO, enPiso, cols, rows, VIVO_: VIVO, seLevanta_: seLevanta, PARADAS, RESERVADAS, salir, reservar_: (p) => reservar(p, null) });
 requestAnimationFrame(bucle);
 </script></body></html>
