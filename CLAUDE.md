@@ -400,6 +400,25 @@ región conectada** y que **ningún escritorio queda sin vecino transitable**. L
 tres primeros intentos de este layout partieron el piso en dos y el chequeo los
 frenó antes de que llegaran al repo.
 
+## Prototipo 3D — una maqueta, no la oficina (sep 2026)
+
+Nacho pasó [Bot Crossing](https://github.com/jarrenrocks/bot-crossing), que
+muestra sesiones de agentes como astronautas en una colonia 3D, y pidió ir en
+esa dirección. Vive en [`proto/3d/`](proto/3d/) con su propio README: **es una
+pieza aparte, no reemplaza nada todavía.**
+
+Lo importante para esta decisión: gracias a la costura de "se diseña en 2D y se
+mira en isométrico", adoptarlo sería **reemplazar sólo `isoRender()`**. El
+prototipo lee el mismo `layout.json`, el mismo `agents.json` y las mismas caras
+de `avatares.json`.
+
+Lo que decide si se adopta o no es **si WebGL corre fluido en el navegador de
+una tele**, que es donde vive el modo TV. Sin eso probado, el isométrico en SVG
+sigue siendo la opción segura y es lo que está en producción.
+
+Las fuentes de assets con licencia libre, y qué mirar antes de bajar nada, en
+[`docs/assets-3d.md`](docs/assets-3d.md).
+
 ## Modo TV — la oficina en una pantalla de pared (sep 2026)
 
 `?tv=1` deja la oficina mirable a tres metros: sin botones, sin pestañas, sin

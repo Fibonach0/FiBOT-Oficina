@@ -1,0 +1,9 @@
+node_modules/
+package.json
+package-lock.json
+bundle.js
+index.html
+artifact.html
+jsm/
+three.module.js
+three.core.js
