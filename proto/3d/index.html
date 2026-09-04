@@ -26,10 +26,21 @@ body{margin:0;background:var(--tinta);color:var(--hueso);font-family:system-ui,-
 .placa .c{font-size:.48rem;color:#9d9282;margin-top:2px}
 .placa.espera{background:rgba(120,54,10,.86)}
 .placa.espera .t{color:#ffe8cf}
+/* El medidor: para leerlo desde el sillón cuando se prueba en la tele. */
+#medidor{position:fixed;right:24px;bottom:16px;z-index:25;font-family:"VT323",ui-monospace,monospace;
+  font-size:1.1rem;color:var(--tenue);text-align:right;line-height:1.2;pointer-events:none}
+#medidor b{color:var(--hueso);font-size:1.6rem}
+#medidor.mal b{color:#e8695a}
+body.tv #medidor{font-size:1.6rem;right:32px;bottom:26px}
+body.tv #medidor b{font-size:3.2rem}
+body.tv .sub,body.tv .pie,body.tv .ctrl{display:none}
+#sin-webgl{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:40px;
+  text-align:center;font-size:1.3rem;line-height:1.5;color:var(--hueso);z-index:30}
+#sin-webgl.visible{display:flex}
 </style></head><body>
 <canvas id="lienzo"></canvas>
 <div class="top">
-  <div><div class="marca">FiBOT<span>.</span> Oficina</div><div class="sub">Prototipo 3D — arrastrá para girar, rueda para acercar.</div></div>
+  <div><div class="marca">FiBOT<span>.</span> Oficina</div><div class="sub">Prototipo 3D — arrastrá para girar, rueda para acercar. Para la tele: <code>?tv=1</code>.</div></div>
   <div class="ctrl">
     <button data-hora="dia" class="on">Día</button>
     <button data-hora="tarde">Tarde</button>
@@ -38,18 +49,108 @@ body{margin:0;background:var(--tinta);color:var(--hueso);font-family:system-ui,-
 </div>
 <div id="placas"></div>
 <div class="pie">Mismo <code>layout.json</code>, mismos agentes, mismas caras de Open Peeps. Lo único que cambia es cómo se dibuja.</div>
+<div id="medidor"><b>…</b> fps<br><span id="medidor-det">cargando…</span></div>
+<div id="sin-webgl">Este navegador no tiene WebGL, o lo tiene apagado.<br>Sin eso el 3D no puede dibujarse: la oficina isométrica de siempre sigue en <a href="../../" style="color:var(--bronce)">oficina.fibot.ar</a>.</div>
 
-<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.min.js"}}</script>
 <script type="module">
 import * as THREE from "three";
-import { OrbitControls } from "./jsm/controls/OrbitControls.js";
-import { RoundedBoxGeometry } from "./jsm/geometries/RoundedBoxGeometry.js";
-import { RoomEnvironment } from "./jsm/environments/RoomEnvironment.js";
+import { OrbitControls } from "../../vendor/three/jsm/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "../../vendor/three/jsm/geometries/RoundedBoxGeometry.js";
+import { RoomEnvironment } from "../../vendor/three/jsm/environments/RoomEnvironment.js";
 
-const SALA = /*__SALA__*/null;
-const AGENTES = /*__AGENTES__*/null;
-const CARAS = /*__CARAS__*/null;
-const VIVO = /*__VIVO__*/null;
+// ---------- parámetros ----------
+//   ?sala=principal      qué sala dibujar (default: la primera que no sea automática)
+//   ?tv=1                para la tele: sin controles, cámara que gira sola, medidor grande
+//   ?calidad=alta|media|baja   alta: sombras suaves y pixelRatio hasta 2 (default en escritorio)
+//                              media: sombras simples y pixelRatio 1 (default con ?tv)
+//                              baja: sin sombras ni antialias — si "media" no llega a 30 fps en la tele
+//   ?dbg                 expone escena/camara/control/gente en window
+const PARAMS = new URLSearchParams(location.search);
+const TV = PARAMS.has("tv") && PARAMS.get("tv") !== "0";
+const CALIDAD = { alta: 0, media: 1, baja: 2 }[PARAMS.get("calidad")] ?? (TV ? 1 : 0);
+if (TV) document.body.classList.add("tv");
+
+// ---------- datos: los mismos archivos que la oficina ----------
+// Se leen en vivo del repo (dos niveles arriba) — nada inyectado a mano. El
+// estado vivo sale del bot si en este navegador hay sesión de la puerta (mismo
+// origen que la oficina, mismo localStorage); si no, de la muestra estado.json.
+const OFICINA_API = "https://jarvis-bot-production-31a4.up.railway.app";
+const ESTADO_MUESTRA = "../../estado.json";
+
+async function json(url, opciones) {
+  const r = await fetch(url, opciones);
+  if (!r.ok) throw new Error(url + " → " + r.status);
+  return r.json();
+}
+
+// Open Peeps recortado a la cabeza, listo como textura. Mismo recorte que usaba
+// gen.py: la cabeza va de y≈90 a y≈560 sobre 704 (medido, no estimado — ver
+// README). Los id internos se renombran porque DiceBear repite el mismo id en
+// todos los avatares, y con varios data-URI en la página eso ya mordió una vez.
+let nCaras = 0;
+function cara(svg) {
+  if (!svg) return "";
+  const suf = "t" + (++nCaras);
+  for (const id of new Set([...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]))) {
+    svg = svg.split(`id="${id}"`).join(`id="${id}-${suf}"`).split(`url(#${id})`).join(`url(#${id}-${suf})`);
+  }
+  return svg.replace(/^<svg[^>]*>/, '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="112 78 480 480">');
+}
+
+function haceCuanto(iso) {
+  if (!iso) return "";
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return "recién";
+  if (min < 60) return `hace ${min} min`;
+  if (min < 48 * 60) return `hace ${Math.round(min / 60)} h`;
+  return `hace ${Math.round(min / 1440)} días`;
+}
+
+async function cargarEstadoVivo() {
+  try {
+    const s = JSON.parse(localStorage.getItem("fibot-oficina-sesion") || "null");
+    if (s && s.access_token) {
+      return await json(OFICINA_API + "/oficina/estado", { headers: { Authorization: "Bearer " + s.access_token } });
+    }
+  } catch (e) { /* sin sesión o el bot no contestó: cae a la muestra */ }
+  try { return await json(ESTADO_MUESTRA); } catch (e) { return { agentes: {} }; }
+}
+
+async function cargarDatos() {
+  const [layout, roster, avatares, estado] = await Promise.all([
+    json("../../layout.json"), json("../../agents.json"), json("../../avatares.json"), cargarEstadoVivo(),
+  ]);
+  const salas = (layout.salas || []).filter((s) => !s.auto);
+  const SALA = salas.find((s) => s.id === PARAMS.get("sala")) || salas[0];
+  const ags = Object.fromEntries((roster.agentes || []).map((a) => [a.id, a]));
+  const CARAS = {}, AGENTES = {}, VIVO = {};
+  for (const o of SALA.objetos) {
+    const id = o.agenteId;
+    if (o.tipo !== "escritorio" || !id || !ags[id] || CARAS[id]) continue;
+    const svg = (avatares.avatares || {})[id]?.openPeeps;
+    if (!svg) continue;
+    CARAS[id] = cara(svg);
+    AGENTES[id] = { nombre: ags[id].nombre, color: ags[id].color || "#7a6f60" };
+    const v = (estado.agentes || {})[id];
+    if (v && v.estado && v.estado !== "inactivo") {
+      VIVO[id] = { estado: v.estado, tarea: v.estado === "esperando_dueno" && v.pregunta ? v.pregunta : (v.tarea || ""), cuando: haceCuanto(v.actualizado) };
+    }
+  }
+  return { SALA, AGENTES, CARAS, VIVO };
+}
+
+function sinWebGL() {
+  try { const c = document.createElement("canvas"); return !(c.getContext("webgl2") || c.getContext("webgl")); }
+  catch (e) { return true; }
+}
+if (sinWebGL()) {
+  document.getElementById("sin-webgl").classList.add("visible");
+  document.getElementById("medidor").style.display = "none";
+  throw new Error("sin WebGL");
+}
+
+const { SALA, AGENTES, CARAS, VIVO } = await cargarDatos();
 const { cols, rows } = SALA.grid;
 
 // ---------- escena ----------
@@ -72,11 +173,11 @@ escena.background = fondoDegrade("#171310", "#080706");
 escena.fog = new THREE.Fog("#0f0d0b", 16, 40);
 const camara = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 200);
 camara.position.set(8.4, 7.6, 9.2);
-const render = new THREE.WebGLRenderer({ canvas: document.getElementById("lienzo"), antialias: true });
-render.setPixelRatio(Math.min(devicePixelRatio, 2));
+const render = new THREE.WebGLRenderer({ canvas: document.getElementById("lienzo"), antialias: CALIDAD < 2, powerPreference: "high-performance" });
+render.setPixelRatio(CALIDAD === 0 ? Math.min(devicePixelRatio, 2) : 1);
 render.setSize(innerWidth, innerHeight);
-render.shadowMap.enabled = true;
-render.shadowMap.type = THREE.PCFSoftShadowMap;
+render.shadowMap.enabled = CALIDAD < 2;
+render.shadowMap.type = CALIDAD === 0 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 render.toneMapping = THREE.ACESFilmicToneMapping;
 render.toneMappingExposure = .92;
 
@@ -91,6 +192,7 @@ control.target.set(0, 0.7, .4);
 control.enableDamping = true;
 control.maxPolarAngle = Math.PI / 2.15;
 control.minDistance = 6; control.maxDistance = 34;
+if (TV) { control.autoRotate = true; control.autoRotateSpeed = .35; control.enabled = false; }
 
 // Luz: una direccional cálida que tira las sombras (es la mitad del volumen) y
 // una hemisférica suave para que lo que queda en sombra no se vaya a negro.
@@ -512,7 +614,33 @@ function bucle(ts) {
   escena.fog.color.lerp(new THREE.Color(hora.niebla), k);
   control.update();
   render.render(escena, camara);
+  medir(ts);
   requestAnimationFrame(bucle);
+}
+
+// ---------- medidor ----------
+// Lo que decide si esto reemplaza al isométrico es cuántos cuadros por segundo
+// saca el navegador de la tele. Se promedia por segundo y se pinta en rojo
+// abajo de 30, que es donde el movimiento empieza a verse a tirones.
+const medidor = document.getElementById("medidor");
+const medidorDet = document.getElementById("medidor-det");
+{
+  const gl = render.getContext();
+  const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpu = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : (gl.getParameter(gl.RENDERER) || "?");
+  const calidad = ["alta", "media", "baja"][CALIDAD];
+  const l1 = document.createElement("div"); l1.textContent = `${innerWidth}×${innerHeight} · ×${render.getPixelRatio()} · ${calidad}`;
+  const l2 = document.createElement("div"); l2.textContent = String(gpu).replace(/^ANGLE \((.*)\)$/, "$1").slice(0, 48);
+  medidorDet.replaceChildren(l1, l2);
+}
+let mFrames = 0, mDesde = performance.now();
+function medir(ts) {
+  mFrames++;
+  if (ts - mDesde < 1000) return;
+  const fps = Math.round(mFrames * 1000 / (ts - mDesde));
+  mFrames = 0; mDesde = ts;
+  medidor.querySelector("b").textContent = fps;
+  medidor.classList.toggle("mal", fps < 30);
 }
 addEventListener("resize", () => {
   camara.aspect = innerWidth / innerHeight; camara.updateProjectionMatrix();
@@ -520,6 +648,6 @@ addEventListener("resize", () => {
 });
 // `?dbg` expone la escena para poder mirarla de cerca desde una prueba,
 // igual que `?vida` en la oficina de verdad. No cambia nada de lo que se ve.
-if (location.search.includes("dbg")) Object.assign(window, { escena, camara, control, gente });
+if (PARAMS.has("dbg")) Object.assign(window, { escena, camara, control, gente, render });
 requestAnimationFrame(bucle);
 </script></body></html>

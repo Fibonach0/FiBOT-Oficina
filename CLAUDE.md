@@ -453,6 +453,18 @@ Lo que decide si se adopta o no es **si WebGL corre fluido en el navegador de
 una tele**, que es donde vive el modo TV. Sin eso probado, el isométrico en SVG
 sigue siendo la opción segura y es lo que está en producción.
 
+Para que esa prueba se pueda hacer, el prototipo **se publica con el sitio** en
+`oficina.fibot.ar/proto/3d/` (sep 2026): dejó de necesitar `gen.py` y un
+bundle local — lee en vivo los mismos JSON de la raíz, three.js está vendoreado
+en `vendor/three/` (MIT, ver `vendor/LICENSES.md`), y el estado de los agentes
+sale del bot si hay sesión de la puerta en ese navegador (mismo origen, mismo
+`localStorage`) o de `estado.json` si no. Tiene un **medidor de fps en
+pantalla**, `?tv=1` (sin controles, cámara girando sola, medidor grande) y
+`?calidad=alta|media|baja` para bajar sombras y pixelRatio si la tele no llega.
+Los umbrales para leer el resultado están en el README del prototipo. La
+oficina de producción **no carga three.js**: sigue siendo un sitio sin
+dependencias en tiempo de ejecución.
+
 Las fuentes de assets con licencia libre, y qué mirar antes de bajar nada, en
 [`docs/assets-3d.md`](docs/assets-3d.md).
 
@@ -729,13 +741,16 @@ apariencia, y la puerta con login de Supabase.
 
 ### Frentes abiertos
 
-1. **3D real vs. isométrico SVG — sin decidir.** En `proto/3d/` hay un
-   prototipo Three.js con cabezas 3D, caras impresas sobre un casquete
-   esférico, brazos y luz IBL. Es **una maqueta, no la oficina**: no lee
-   `estado.json`, no tiene modo diseño, no tiene puerta. La pregunta que lo
-   decide es cómo se ve **en la tele de la pared** — el isométrico SVG que hoy
-   está en producción se lee perfecto ahí, y el 3D todavía no se probó. Hasta
-   que esa prueba exista, lo que está en producción es lo bueno.
+1. **3D real vs. isométrico SVG — la prueba ya se puede hacer.** En
+   `proto/3d/` hay un prototipo Three.js con cabezas 3D, caras impresas sobre
+   un casquete esférico, brazos y luz IBL. Es **una maqueta, no la oficina**:
+   no tiene modo diseño ni puerta (lee el estado vivo, pero no tiene vida ni
+   BFS: los que caminan siguen un recorrido fijo). Desde sep 2026 está
+   publicado en **`oficina.fibot.ar/proto/3d/?tv=1`** con medidor de fps: lo
+   que falta es que Nacho lo abra en el navegador de la tele y lea el número
+   (umbrales en el README del prototipo). Si pasa, el siguiente paso es la
+   integración: reemplazar `isoRender()` y enganchar la vida real. Si no pasa,
+   el isométrico SVG se queda y esto sigue siendo una pieza aparte.
 2. **Los cubículos nuevos no se veían en el navegador de Nacho — resuelto.**
    Un boceto local le gana al oficial y hasta ahora sólo se inyectaban *salas*
    faltantes, no muebles dentro de una sala que ya existía. Ahora

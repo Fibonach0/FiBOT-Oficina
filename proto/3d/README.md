@@ -18,20 +18,41 @@ puerta.
 
 ## Cómo correrlo
 
-```bash
-cd proto/3d
-npm install three                 # sólo para compilar el bundle
-bun build entry.js --outfile bundle.js --minify --format=iife --target=browser
-python3 gen.py                    # inyecta layout/agentes/caras → index.html
-python3 -m http.server 8768       # y abrir http://localhost:8768/index.html
-```
+No hay que compilar nada: es una página estática más del sitio y **se publica
+con GitHub Pages en `oficina.fibot.ar/proto/3d/`**. Lee en vivo los mismos
+`layout.json`, `agents.json` y `avatares.json` de la raíz del repo, y el estado
+de cada agente sale del bot si en ese navegador hay sesión de la puerta (mismo
+origen que la oficina, mismo `localStorage`); si no, de la muestra
+`estado.json`. three.js está en `vendor/three/` (ver `vendor/LICENSES.md`).
 
-`gen.py` lee los JSON del repo y los inserta en `plantilla.html`. Lo generado
-(`index.html`, `bundle.js`, `node_modules/`) está gitignoreado: se rehace con
-los dos comandos de arriba.
+Localmente: cualquier servidor estático en la raíz del repo
+(`python3 -m http.server 8768`) y abrir `http://localhost:8768/proto/3d/`.
 
-`?dbg` expone `escena`, `camara`, `control` y `gente` en `window`, para poder
-acercar la cámara desde una prueba. Mismo espíritu que `?vida` en la oficina.
+Parámetros en la URL:
+
+| Parámetro | Qué hace |
+|---|---|
+| `?tv=1` | Para la tele: sin controles ni textos, cámara que gira sola, medidor grande |
+| `?calidad=alta\|media\|baja` | `alta`: sombras suaves y pixelRatio hasta 2 (default en escritorio). `media`: sombras simples y pixelRatio 1 (default con `?tv`). `baja`: sin sombras ni antialias |
+| `?sala=cantarini` | Qué sala dibujar (default: la primera que no sea automática) |
+| `?dbg` | Expone `escena`, `camara`, `control`, `gente` y `render` en `window` |
+
+## La prueba que decide (pendiente de Nacho)
+
+Abrir en el navegador de la tele **`https://oficina.fibot.ar/proto/3d/?tv=1`** y
+leer el medidor de abajo a la derecha: cuadros por segundo, resolución,
+pixelRatio, calidad y la GPU que reporta el navegador. El número se pinta en
+rojo abajo de 30, que es donde el movimiento empieza a verse a tirones.
+
+- **≥ 45 fps con `calidad=media`**: el 3D es viable en la tele y se puede
+  encarar la integración (reemplazar `isoRender()`).
+- **30–45**: probar `&calidad=baja`. Si ahí sube a más de 45, viable con
+  recortes (sin sombras).
+- **< 30 incluso en `baja`**, o la pantalla de "este navegador no tiene
+  WebGL": el isométrico SVG se queda, y el 3D queda como pieza aparte para
+  escritorio o para un Chromecast/mini-PC, no para el navegador de la tele.
+
+Sacarle una foto al medidor con el celular alcanza como registro.
 
 ## Decisiones que costaron y conviene no re-descubrir
 
