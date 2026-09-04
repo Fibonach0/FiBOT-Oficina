@@ -124,7 +124,11 @@ la nota de un agente no rompe el layout.
 
 ### Modo diseño — construcción estilo Sims
 
-Botón "Modo diseño" en el header. Con la paleta abierta: elegís un mueble,
+Botón "Modo diseño" en el header. **Se diseña en 2D desde arriba y se mira en
+isométrico** (ver "Vista isométrica"): esta sección describe el render plano,
+que es el que se usa para diseñar y quedó tal cual estaba.
+
+Con la paleta abierta: elegís un mueble,
 click en una celda libre del piso para colocarlo; arrastrás (pointer events,
 mouse y touch) lo ya puesto para moverlo; `Delete`/`Backspace` borra la
 selección; un escritorio seleccionado tiene un `<select>` para asignarle (o
@@ -220,6 +224,9 @@ mismo `Bearer` de la puerta, cada minuto junto con el estado.
 no hay que pasar por el modo diseño. Consecuencias que hay que respetar al
 tocar esto:
 
+- **No se proyecta en isométrico.** Un piso de pizarrones es un tablero de
+  datos, no una oficina: no hay volumen que mostrar y los números tienen que
+  leerse. `isoActivo()` excluye las salas automáticas.
 - El modo diseño está **desactivado dentro de esta sala** (paleta oculta,
   arrastre y colocación bloqueados con `salaEsAuto(LAYOUT)`, sin "Renombrar").
   Colocar algo a mano no tendría sentido: el próximo render lo borra.
@@ -276,6 +283,81 @@ boceto local suma cualquier sala del oficial que falte, **una vez cada una**.
 Probado con Playwright (`scratchpad/test-salas.mjs` de la sesión, no está en el
 repo): boceto viejo con sala propia, segunda carga, sala borrada a mano,
 navegador limpio, `layout.json` caído y el navegador con el flag viejo.
+
+## Vista isométrica — se diseña en 2D y se mira en 3D (sep 2026)
+
+Nacho pidió que la oficina fuera "estilo los Sims": avatares con su
+cubículo, que se muevan. Dos maquetas previas se fueron para el lado de
+*herramienta* (consola de estado, más densa y más "pro") y las rechazó — el
+pedido era ir para el lado del **juego**, no del panel.
+
+Lo que hace la diferencia es la **proyección**. Desde arriba, un mueble es un
+recorte de papel; en isométrico tiene volumen. La proyección es **dimétrica
+2:1**: el rombo de una celda mide `cell` de ancho y `cell/2` de alto, la de los
+isométricos clásicos.
+
+**La decisión que hizo barato todo esto**: se **diseña en 2D desde arriba y se
+mira en isométrico**. El Modo diseño quedó **intacto** sobre el render plano de
+siempre — arrastrar, pinceles, rotar, colocar, achicar la grilla — y el módulo
+isométrico **no tiene una sola línea de interacción, sólo dibujo**. Lo caro de
+un isométrico es justamente lo otro: invertir la proyección para saber qué
+celda tocaste, ordenar el hit-testing por altura, rehacer el arrastre. Nada de
+eso hizo falta. `layout.json` tampoco cambia de forma: misma grilla, mismas
+celdas, mismos objetos.
+
+`isoActivo()` es el criterio, en un solo lugar: isométrico salvo en Modo diseño
+y salvo en una sala automática.
+
+### Cómo está armado
+
+- `isoMedidas()` / `isoXY()` / `isoZ()` — la proyección y la profundidad.
+- `isoCaja()` dibuja las tres caras que ve la cámara; `isoCajaC()` es la misma
+  centrada en la celda, y es la que se usa para todo: razonar con "ancho 0.5 en
+  el medio, corrido 0.3 hacia la cámara" tiene muchos menos errores que
+  calcular la esquina a mano.
+- `ISO_DIBUJO` es un mueble por clave. **Las claves son las de `PALETA`, que no
+  son las que uno supondría**: el "Divisor" de la paleta es `pared`, el pizarrón
+  es `pizarra` y la heladera es `heladera`. Sumar un mueble es agregar una
+  entrada acá, igual que en `DECO_SVG` para el plano.
+- Las alturas van como **fracción de `cell`** (`A(.24)`), así una sala con
+  celdas de 140 y otra de 100 se ven proporcionadas igual.
+
+### Lo que costó encontrar y no conviene re-descubrir
+
+- **La profundidad tiene que cruzar SVG y HTML.** Los muebles son SVG y las
+  personas son HTML (para reusar los avatares de Open Peeps y los manejadores de
+  siempre). Con un solo `<svg>` de fondo, todas las personas quedan por encima
+  de todos los tabiques. Por eso el SVG se parte en **bandas de profundidad**,
+  una por `round(x+y)`, y los recuadros de HTML usan `isoZ()` en **la misma
+  escala**. Que un tabique le tape el cuerpo a alguien es la mitad de la
+  sensación de estar adentro de la oficina.
+- **`.capa-vida` no puede tener `z-index` propio en isométrico**: crearía un
+  contexto de apilado y los muñecos que caminan volverían a flotar arriba de
+  todo. En `.tablero.iso` se le pone `z-index: auto`.
+- **Las etiquetas van en su propia capa** (`.iso-nombres`, z-index 9000).
+  Arreglar lo anterior tapa los nombres detrás de los tabiques, que es correcto
+  para el cuerpo y absurdo para el cartelito.
+- **El contenedor y la pieza de adentro no pueden compartir clase.** El
+  contenedor era `iso-cartel` igual que el cartel que lleva adentro, así que el
+  CSS del cartel le pintaba al contenedor un segundo tablero vacío detrás de
+  cada uno. Por eso el contenedor lleva prefijo propio: `iso-obj-<tipo>`.
+- **El contenedor mide 0×0**: es un punto del que cuelgan los hijos con
+  posiciones absolutas. Lo que se toca son los hijos, no el contenedor.
+
+### Los cubículos y el pasillo
+
+Los tabiques (`pared`) laterales entre escritorio y escritorio son lo que
+convierte una fila de escritorios en cubículos. **Amurallar también los fondos
+se probó y arma bolsones sin salida**: los muñecos buscan camino por BFS en la
+grilla y quedan encerrados en su propio cubículo. Por eso los fondos quedan
+abiertos y cada bloque cerrado lleva una `puerta`, que junto con `alfombra` son
+los dos únicos tipos que el buscador considera transitables (`CAMINABLE`).
+
+Al tocar el `layout.json` oficial conviene volver a correr la comprobación que
+se usó acá: recorrer el piso libre con un BFS y confirmar que queda **una sola
+región conectada** y que **ningún escritorio queda sin vecino transitable**. Los
+tres primeros intentos de este layout partieron el piso en dos y el chequeo los
+frenó antes de que llegaran al repo.
 
 ## Modo TV — la oficina en una pantalla de pared (sep 2026)
 
