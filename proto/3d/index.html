@@ -24,6 +24,9 @@ body{margin:0;background:var(--tinta);color:var(--hueso);font-family:system-ui,-
 .placa .t{font-size:.54rem;color:#ddd3bf;line-height:1.2;margin-top:1px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .placa .c{font-size:.48rem;color:#9d9282;margin-top:2px}
+.placa .act{display:none;font-size:.6rem;color:#ffe8cf;margin-top:2px}
+.placa.afuera .act{display:block}
+.placa.afuera .t,.placa.afuera .c{display:none}
 .placa.espera{background:rgba(120,54,10,.86)}
 .placa.espera .t{color:#ffe8cf}
 /* El medidor: para leerlo desde el sillón cuando se prueba en la tele. */
@@ -95,7 +98,13 @@ function cara(svg) {
   for (const id of new Set([...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]))) {
     svg = svg.split(`id="${id}"`).join(`id="${id}-${suf}"`).split(`url(#${id})`).join(`url(#${id}-${suf})`);
   }
-  return svg.replace(/^<svg[^>]*>/, '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="112 78 480 480">');
+  // Recorte elíptico del tamaño de la cabeza: algunos peinados de Open Peeps
+  // (la melena larga, por ejemplo) ocupan medio lienzo y en el cartel salían
+  // como un bloque negro detrás de la cara. La oficina lo disimula con su
+  // círculo; acá la elipse deja el mentón y el cuello enteros.
+  return svg
+    .replace(/^<svg[^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="100 62 504 504"><defs><clipPath id="corte-${suf}"><ellipse cx="352" cy="318" rx="218" ry="252"/></clipPath></defs><g clip-path="url(#corte-${suf})">`)
+    .replace(/<\/svg>\s*$/, "</g></svg>");
 }
 
 function haceCuanto(iso) {
@@ -430,60 +439,48 @@ for (const o of SALA.objetos) {
 }
 
 // ---------- la gente ----------
-// El cuerpo es 3D y la cara es un sprite: así el avatar de Open Peeps que ya
-// tiene cada agente se sigue viendo igual, y siempre mira a la cámara aunque
-// gires la escena.
-// La cabeza tiene volumen de verdad: una esfera achatada con el tono de piel
-// del propio avatar, una capa de pelo por encima, y la cara del agente impresa
-// al frente. Se probó extruir el SVG entero y no sirve: el dibujo incluye el
-// cuerpo, el <mask> del viewBox entra como una placa blanca, y el pelo, hecho
-// sólido, le tapa la cara. Esto conserva la identidad y encima tira sombra.
+// El cuerpo es 3D y la cabeza es el dibujo de Open Peeps tal cual, de frente a
+// la cámara siempre (un sprite). Se probaron dos cosas antes y las dos se ven
+// mal: la cara como plano delante de una esfera (careta: se nota el borde y el
+// aire), y la cara pintada sobre un casquete de la esfera (el dibujo plano se
+// estira en los costados, el pelo queda dos veces —dibujado y como color del
+// cráneo— con una costura entre ambos, y desde atrás asoma el borde de la cara).
+// El cartel conserva la identidad exacta del avatar de la oficina, no tiene
+// costuras, y la sensación de volumen la da la sombra: una esfera invisible
+// (no escribe color ni profundidad) que sí proyecta sombra.
 const cargador = new THREE.TextureLoader();
+const CARTELES = [];   // materiales de las cabezas, para teñirlos con la hora del día
 
+// Las paletas son las de DiceBear openPeeps (vendor/openpeeps.js): piel y pelo
+// son listas cerradas, así que se reconocen por valor y no adivinando por orden.
+// La piel se usa para cuello, manos y brazos.
+const PALETA_PIEL = ["#694d3d", "#ae5d29", "#d08b5b", "#edb98a", "#ffdbb4"];
+const PALETA_PELO = ["#2c1b18", "#e8e1e1", "#ecdcbf", "#d6b370", "#f59797", "#b58143", "#a55728", "#724133", "#4a312c", "#c93305"];
 function coloresDe(svg) {
   const fills = [...svg.matchAll(/fill="(#[0-9a-f]{3,6})"/gi)].map((m) => m[1].toLowerCase());
-  const piel = fills.find((c) => !["#000", "#fff", "#000000", "#ffffff"].includes(c)) || "#edb98a";
-  const pelo = fills.find((c) => c === "#000" || c === "#000000") || "#2b2b33";
+  const piel = fills.find((c) => PALETA_PIEL.includes(c)) || "#edb98a";
+  const pelo = fills.find((c) => PALETA_PELO.includes(c)) || "#1e1a1c";
   return { piel, pelo };
 }
 
-function cabeza3D(svg) {
-  const { piel, pelo } = coloresDe(svg);
-  // Dos grupos anidados a propósito: el de adentro lleva el achatado de la
-  // cabeza y el de afuera la inclinación. Escalar y rotar el MISMO objeto con
-  // una escala no uniforme deforma en diagonal.
+function cabezaCartel(svg) {
   const g = new THREE.Group();
-  const cabeza = new THREE.Group();
-  const R = .22;
-
-  // El cráneo va del color del PELO: la cara se pinta sobre el frente, así que
-  // lo que queda a la vista por los costados y atrás es la cabellera.
-  const craneo = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), mat(pelo, .86));
-  craneo.castShadow = true; cabeza.add(craneo);
-  // Un poco de piel abajo, donde va el cuello.
-  const cuello = new THREE.Mesh(new THREE.CylinderGeometry(.09, .1, .1, 12), mat(piel, .82));
-  cuello.position.y = -R * .92; cabeza.add(cuello);
-
-  // La cara NO es un plano adelante (eso se ve como una careta puesta): es un
-  // casquete de la misma esfera, con el mismo radio, así queda pintada sobre
-  // la cabeza y se curva con ella.
-  // El casquete va corrido HACIA ARRIBA del ecuador: centrado al medio, la
-  // cara cae en la mitad de abajo de la cabeza y, con la cámara mirando desde
-  // arriba, se ve cabizbaja.
-  const AN = 2.05, AL = 1.95, SUBE = .10;
-  const geo = new THREE.SphereGeometry(R * 1.003, 48, 36,
-    Math.PI / 2 - AN / 2, AN, Math.PI / 2 - AL / 2 - SUBE, AL);
   const tex = cargador.load("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg));
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  const cara = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-    map: tex, transparent: true, roughness: .85, depthWrite: false,
-    polygonOffset: true, polygonOffsetFactor: -2 }));
-  cabeza.add(cara);
-
-  cabeza.scale.set(1, 1.06, .9);
-  g.add(cabeza);
-  g.rotation.x = -.13;   // un poco de mentón arriba, para que mire de frente
+  tex.anisotropy = 4;
+  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true });
+  const cartel = new THREE.Sprite(m);
+  // El ancla va cerca del mentón (8% desde abajo del recorte), así el cartel
+  // se apoya en el cuello y el pelo crece hacia arriba.
+  cartel.center.set(.5, .08);
+  cartel.scale.set(.7, .7, 1);
+  g.add(cartel);
+  const R = .2;
+  const sombra = new THREE.Mesh(new THREE.SphereGeometry(R, 16, 12),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+  sombra.castShadow = true; sombra.position.y = R * 1.1;
+  g.add(sombra);
+  CARTELES.push(m);
   return g;
 }
 
@@ -527,19 +524,247 @@ for (const o of SALA.objetos) {
   });
   const piernas = [-1, 1].map((s) => { const p = caja(.1, .3, .1, MAT.grisOsc, 0, 0, 0); escena.remove(p);
     p.position.set(s * .09, .15, 0); g.add(p); return p; });
-  const cabeza = cabeza3D(CARAS[o.agenteId]);
-  cabeza.position.y = .92; g.add(cabeza);
+  const cabeza = cabezaCartel(CARAS[o.agenteId]);
+  cabeza.position.y = .705; g.add(cabeza);   // apoyada en el cuello
   g.add(sombraContacto(.8));
   g.position.set(x, 0, z - .3);   // del lado de la cámara: se le ve la cara
   escena.add(g);
   // Sentado: hombros adelante y codos doblados, las manos sobre el escritorio.
   brazos.forEach((b) => { b.hombro.rotation.x = -1.15; b.codo.rotation.x = .55; });
-  gente.push({ id: o.agenteId, g, piernas, brazos,
+  gente.push({ id: o.agenteId, g, piernas, brazos, desk: o, fase: "sentado",
     base: new THREE.Vector3(x, 0, z - .3), sentado: true, t: Math.random() * 10 });
 }
-// tres salen a dar una vuelta, para que se vea que se mueven
-const RUTA = [[1.6, 2.2], [-2.4, 2.6], [3.2, 1.4], [-3.4, .6]];
-gente.slice(0, 3).forEach((p, i) => { p.sentado = false; p.destino = new THREE.Vector3(RUTA[i][0], 0, RUTA[i][1]); });
+// ---------- por dónde se camina ----------
+// Mismo criterio que la oficina: la grilla del layout, cuatro vecinos, y sólo
+// alfombra y puerta son transitables entre los muebles. Antes tres personas
+// iban en línea recta a puntos fijos, atravesando escritorios y tabiques.
+const CAMINABLE = new Set(["alfombra", "puerta"]);
+const OCUPADO = new Set();
+for (const o of SALA.objetos) if (!CAMINABLE.has(o.tipo)) OCUPADO.add(o.x + "," + o.y);
+const libre = (gx, gy) => gx >= 0 && gy >= 0 && gx < cols && gy < rows && !OCUPADO.has(gx + "," + gy);
+const VECINOS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+// BFS. `desde` es la celda del escritorio propio (ocupada, pero es el punto de
+// partida) y `hasta` una celda libre. Como la silla está en el borde de ATRÁS
+// del escritorio y el monitor adelante, del escritorio sólo se sale por atrás o
+// por los costados: `primeros` acota el primer paso. El camino de vuelta es el
+// mismo al revés, así que entrar también es por atrás o por los costados.
+function camino(desde, hasta, primeros) {
+  const clave = (c) => c[0] + "," + c[1];
+  const prev = new Map([[clave(desde), null]]);
+  const cola = [desde];
+  while (cola.length) {
+    const c = cola.shift();
+    if (c[0] === hasta[0] && c[1] === hasta[1]) {
+      const ruta = [];
+      for (let cur = c; cur; cur = prev.get(clave(cur))) ruta.unshift(cur);
+      return ruta;
+    }
+    const esInicio = c === desde;
+    for (const [dx, dy] of VECINOS) {
+      const n = [c[0] + dx, c[1] + dy];
+      if (!libre(n[0], n[1]) || prev.has(clave(n))) continue;
+      if (esInicio && primeros && !primeros.has(clave(n))) continue;
+      prev.set(clave(n), c);
+      cola.push(n);
+    }
+  }
+  return null;
+}
+// Por dónde se puede salir de (y entrar a) un escritorio: atrás y los costados.
+const salidasDe = (o) => new Set([[o.x, o.y - 1], [o.x - 1, o.y], [o.x + 1, o.y]].map((c) => c[0] + "," + c[1]));
+// Puntos del mundo para ir de la silla a la primera celda: si es un costado, se
+// va primero de lado (a la altura de la silla) y recién ahí al centro de la
+// celda, así el tramo nunca es diagonal ni roza el escritorio.
+function tramoDesdeSilla(p, celda) {
+  const [x, z] = enPiso(celda[0], celda[1]);
+  if (celda[1] === p.desk.y) return [new THREE.Vector3(x, 0, p.base.z), new THREE.Vector3(x, 0, z)];
+  return [new THREE.Vector3(x, 0, z)];
+}
+// Celdas reservadas: adónde va o dónde está parado cada uno. Dos personas no
+// eligen la misma celda, así no se amontonan en el mismo lugar.
+const RESERVADAS = new Map();
+function reservar(p, celda) {
+  if (p.reserva) RESERVADAS.delete(p.reserva);
+  p.reserva = celda ? celda[0] + "," + celda[1] : null;
+  if (p.reserva) RESERVADAS.set(p.reserva, p.id);
+}
+const disponible = (x, y) => libre(x, y) && !RESERVADAS.has(x + "," + y);
+function celdaJuntoA(o) {
+  const ops = VECINOS.map(([dx, dy]) => [o.x + dx, o.y + dy]).filter(([x, y]) => disponible(x, y));
+  return ops.length ? ops[Math.floor(Math.random() * ops.length)] : null;
+}
+// Dónde hacer la fila: la celda disponible más cercana al mueble que NO sea
+// pegada a él (un paso atrás, como en una cola de verdad). Si no hay, una pegada.
+function celdaDeEspera(o) {
+  const clave = (c) => c[0] + "," + c[1];
+  const frente = VECINOS.map(([dx, dy]) => [o.x + dx, o.y + dy]).filter(([x, y]) => libre(x, y));
+  const dist = new Map(frente.map((c) => [clave(c), 0]));
+  const cola = frente.slice();
+  let pegada = null;
+  while (cola.length) {
+    const c = cola.shift(), d = dist.get(clave(c));
+    if (disponible(c[0], c[1])) { if (d >= 1) return c; if (!pegada) pegada = c; }
+    if (d >= 4) continue;
+    for (const [dx, dy] of VECINOS) {
+      const n = [c[0] + dx, c[1] + dy];
+      if (!libre(n[0], n[1]) || dist.has(clave(n))) continue;
+      dist.set(clave(n), d + 1); cola.push(n);
+    }
+  }
+  return pegada;
+}
+// A qué mueble van y qué dicen mientras están ahí.
+const ACTIVIDADES = {
+  cafetera: ["☕", "un café"], heladera: ["🍎", "algo de picar"], dispenser: ["💧", "agua"],
+  planta: ["🌱", "riega la planta"], sofa: ["😌", "un rato en el sofá"], pizarra: ["🧠", "pensando"],
+  cuadro: ["🏆", "el próximo es mío"], ventana: ["🪟", "mirando afuera"],
+};
+const PARADAS = SALA.objetos.filter((o) => ACTIVIDADES[o.tipo]);
+// Un mueble lo usa una persona por vez: `ocupante` es quien lo tiene (o va en
+// camino) y `cola` los que esperan turno, en orden de llegada.
+for (const o of PARADAS) { o.ocupante = null; o.cola = []; }
+const ESPERA_TURNO = ["⏳", "espera turno"];
+const COLA_MAX = 2;
+// Quién se levanta: el que no tiene tarea en curso ni te está esperando, como
+// en la oficina. Los que laburan se quedan sentados.
+const seLevanta = (id) => !VIVO[id] || !["en_curso", "esperando_dueno"].includes(VIVO[id].estado);
+// `?vida` acorta todos los tiempos (para las pruebas), igual que en la oficina.
+const RITMO = PARAMS.has("vida") ? .06 : 1;
+const azar = (a, b) => a + Math.random() * (b - a);
+
+for (const p of gente) {
+  p.celda = [p.desk.x, p.desk.y];
+  p.ruta = [];            // puntos del mundo pendientes
+  p.espera = azar(3, 18) * RITMO;   // segundos hasta la próxima salida
+  p.rumbo = 0;            // ángulo actual (se gira suave hacia el objetivo)
+  p.rumboObjetivo = 0;
+}
+function aPunto([gx, gy]) { const [x, z] = enPiso(gx, gy); return new THREE.Vector3(x, 0, z); }
+function salir(p, elegido) {
+  if (!PARADAS.length || !seLevanta(p.id)) return;
+  const o = elegido || PARADAS[Math.floor(Math.random() * PARADAS.length)];
+  // Ocupado y con la fila llena: no vale la pena, prueba más tarde con otro.
+  if (o.ocupante && o.cola.length >= COLA_MAX) { p.espera = azar(3, 10) * RITMO; return; }
+  const celda = o.ocupante ? celdaDeEspera(o) : celdaJuntoA(o);
+  const ruta = celda && camino(p.celda, celda, salidasDe(p.desk));
+  if (!ruta) { p.espera = azar(3, 10) * RITMO; return; }  // sin camino: se queda y prueba más tarde
+  p.sentado = false; p.destinoObj = o; p.destinoCelda = celda;
+  reservar(p, celda);
+  if (o.ocupante) { o.cola.push(p); p.fase = "yendoCola"; }
+  else { o.ocupante = p; p.fase = "yendo"; }
+  p.ruta = tramoDesdeSilla(p, ruta[1]).concat(ruta.slice(2).map(aPunto));
+  p.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
+}
+// Se puso en la fila y llegó a su lugar: mira al mueble y espera. Si tarda
+// demasiado, se cansa y vuelve.
+function enCola(p) {
+  // Mientras venía, el mueble se desocupó y ya es su turno: pasa directo.
+  if (p.destinoObj.ocupante === p) { avanzarAlMueble(p); return; }
+  const [ox, oz] = enPiso(p.destinoObj.x, p.destinoObj.y);
+  p.rumboObjetivo = Math.atan2(ox - p.g.position.x, oz - p.g.position.z);
+  p.piernas.forEach((pi) => { pi.rotation.x = 0; });
+  p.brazos.forEach((b, i) => { b.hombro.rotation.x = -.6; b.codo.rotation.x = 1.6; b.hombro.rotation.z = (i ? 1 : -1) * .35; });
+  p.decir(ESPERA_TURNO);
+  p.espera = azar(25, 45) * RITMO; p.fase = "enCola";
+}
+// Le toca al siguiente de la fila. Si todavía viene caminando hacia la fila,
+// queda anotado como ocupante y avanza cuando llega (ver enCola); si ya está
+// parado, avanza ahora.
+function pasarTurno(o) {
+  const q = o.cola.shift();
+  o.ocupante = q || null;
+  if (q && !q.ruta.length) avanzarAlMueble(q);
+}
+// De la fila a una celda pegada al mueble. Si no hay ninguna libre, lo usa
+// desde donde está.
+function avanzarAlMueble(q) {
+  const o = q.destinoObj;
+  q.brazos.forEach((b) => { b.hombro.rotation.z = 0; });
+  q.decir(null);
+  const junto = celdaJuntoA(o);
+  const ruta = junto && camino(q.destinoCelda, junto);
+  if (!ruta) { llegar(q); return; }
+  reservar(q, junto); q.destinoCelda = junto;
+  q.ruta = ruta.slice(1).map(aPunto); q.fase = "yendo";
+  q.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
+}
+// Deja el mueble (o la fila). La reserva se libera ANTES de pasar el turno,
+// así el siguiente puede ocupar justo la celda que se desocupa.
+function soltar(p) {
+  const o = p.destinoObj;
+  reservar(p, null);
+  if (!o) return;
+  if (o.ocupante === p) pasarTurno(o);
+  else o.cola = o.cola.filter((q) => q !== p);
+}
+function volver(p) {
+  soltar(p);
+  p.brazos.forEach((b) => { b.hombro.rotation.z = 0; });
+  // Se calcula desde el escritorio (para que valga la regla de por dónde se
+  // entra) y se recorre al revés.
+  const ida = camino(p.celda, p.destinoCelda, salidasDe(p.desk));
+  if (!ida) { p.espera = azar(2, 6) * RITMO; p.fase = "parado"; return; }
+  const vuelta = ida.slice().reverse();            // destino … vecino del escritorio, escritorio
+  const entrada = tramoDesdeSilla(p, vuelta[vuelta.length - 2]).reverse(); // centro del vecino → (lado) → silla
+  p.ruta = vuelta.slice(1, -1).map(aPunto).concat(entrada.slice(1), [p.base.clone()]);
+  p.decir(null);
+  p.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
+  p.fase = "volviendo";
+}
+function sentar(p) {
+  reservar(p, null); p.destinoObj = null;
+  p.sentado = true; p.fase = "sentado";
+  p.g.position.copy(p.base); p.rumbo = p.rumboObjetivo = 0; p.g.rotation.y = 0;
+  p.piernas.forEach((pi) => { pi.rotation.x = 0; });
+  p.brazos.forEach((b) => { b.hombro.rotation.x = -1.15; b.codo.rotation.x = .55; });
+  p.espera = azar(8, 30) * RITMO;
+}
+function llegar(p) {
+  const o = p.destinoObj;
+  // Mira al mueble al que vino.
+  const [ox, oz] = enPiso(o.x, o.y);
+  p.rumboObjetivo = Math.atan2(ox - p.g.position.x, oz - p.g.position.z);
+  p.piernas.forEach((pi) => { pi.rotation.x = 0; });
+  p.brazos.forEach((b) => { b.hombro.rotation.x = -.35; b.codo.rotation.x = .9; });
+  p.decir(ACTIVIDADES[o.tipo]);
+  p.espera = azar(3, 8) * RITMO; p.fase = "parado";
+}
+// El estado avanza aparte del dibujo: `paso(dt)` es puro cálculo, así una
+// prueba puede correr minutos de oficina en un segundo sin renderizar.
+function paso(dt) {
+  for (const p of gente) {
+    p.t += dt;
+    if (p.ruta.length) {
+      const obj = p.ruta[0];
+      const dir = v3.copy(obj).sub(p.g.position); dir.y = 0;
+      const dist = dir.length(), avance = dt * 1.1;
+      if (dist <= avance) {
+        p.g.position.copy(obj); p.ruta.shift();
+        if (!p.ruta.length) ({ yendo: llegar, yendoCola: enCola, volviendo: sentar })[p.fase](p);
+      }
+      else {
+        dir.normalize(); p.g.position.addScaledVector(dir, avance);
+        p.rumboObjetivo = Math.atan2(dir.x, dir.z);
+        const paso = Math.sin(p.t * 7);
+        p.piernas[0].rotation.x = paso * .6; p.piernas[1].rotation.x = -paso * .6;
+        p.brazos[0].hombro.rotation.x = -paso * .5; p.brazos[1].hombro.rotation.x = paso * .5;
+        p.brazos.forEach((b) => { b.codo.rotation.x = .25; });
+        p.g.position.y = Math.abs(paso) * .03;
+      }
+    } else {
+      p.espera -= dt;
+      if (p.espera <= 0) {
+        if (p.fase === "parado" || p.fase === "enCola") volver(p);   // en la fila: se cansó de esperar
+        else if (p.fase === "sentado") salir(p);
+      }
+    }
+    // Giro suave hacia el rumbo (por el camino corto, sin dar la vuelta larga).
+    let d = p.rumboObjetivo - p.rumbo;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    p.rumbo += d * Math.min(1, dt * 9);
+    p.g.rotation.y = p.rumbo;
+  }
+}
 
 // ---------- placas ----------
 const capa = document.getElementById("placas");
@@ -551,14 +776,16 @@ for (const p of gente) {
   el.innerHTML = `<div class="n"><i style="--e:${PUNTO[(v && v.estado) || "inactivo"]}"></i>${ag.nombre}</div>`
     + `<div class="t">${v ? v.tarea : "sin novedad"}</div>`
     + (v ? `<div class="c">${v.cuando}</div>` : "");
+  const act = document.createElement("div"); act.className = "act"; el.appendChild(act);
   capa.appendChild(el); p.placa = el;
+  p.decir = (a) => { act.textContent = a ? `${a[0]} ${a[1]}` : ""; el.classList.toggle("afuera", !!a); };
 }
 
 // ---------- momentos del día ----------
 const HORAS = {
-  dia:   { sol: 2.7, solCol: "#ffe2b8", cielo: .22, punto: 0,   niebla: "#12100d", ent: .17, fondo: ["#1b1611", "#090807"] },
-  tarde: { sol: 2.0, solCol: "#ffb173", cielo: .17, punto: .45, niebla: "#181009", ent: .13,  fondo: ["#241708", "#0c0806"] },
-  noche: { sol: .28, solCol: "#7f97c9", cielo: .09, punto: 1.5, niebla: "#080b12", ent: .07, fondo: ["#0c111b", "#050609"] },
+  dia:   { sol: 2.7, solCol: "#ffe2b8", cielo: .22, punto: 0,   niebla: "#12100d", ent: .17, fondo: ["#1b1611", "#090807"], cara: "#ffffff" },
+  tarde: { sol: 2.0, solCol: "#ffb173", cielo: .17, punto: .45, niebla: "#181009", ent: .13,  fondo: ["#241708", "#0c0806"], cara: "#f3dcc4" },
+  noche: { sol: .28, solCol: "#7f97c9", cielo: .09, punto: 1.5, niebla: "#080b12", ent: .07, fondo: ["#0c111b", "#050609"], cara: "#9aa3b8" },
 };
 for (const h of Object.values(HORAS)) h.tex = fondoDegrade(h.fondo[0], h.fondo[1]);
 let hora = HORAS.dia;
@@ -574,27 +801,8 @@ const v3 = new THREE.Vector3();
 let ultimo = performance.now();
 function bucle(ts) {
   const dt = Math.min(.05, (ts - ultimo) / 1000); ultimo = ts;
+  paso(dt);
   for (const p of gente) {
-    p.t += dt;
-    if (!p.sentado) {
-      const dir = v3.copy(p.destino).sub(p.g.position); dir.y = 0;
-      if (dir.length() < .08) {
-        const p2 = p.destino; p.destino = p.base.clone(); p.base = p2;
-        p.brazos.forEach((b) => { b.hombro.rotation.x = -.1; b.codo.rotation.x = .2; });
-      }
-      else {
-        dir.normalize(); p.g.position.addScaledVector(dir, dt * 1.1);
-        p.g.rotation.y = Math.atan2(dir.x, dir.z);
-        const paso = Math.sin(p.t * 7);
-        p.piernas[0].rotation.x = paso * .6;
-        p.piernas[1].rotation.x = -paso * .6;
-        // Los brazos van al revés que la pierna del mismo lado, como al caminar.
-        p.brazos[0].hombro.rotation.x = -paso * .5;
-        p.brazos[1].hombro.rotation.x = paso * .5;
-        p.brazos.forEach((b) => { b.codo.rotation.x = .25; });
-        p.g.position.y = Math.abs(Math.sin(p.t * 7)) * .03;
-      }
-    }
     // la placa sigue a la cabeza, proyectada a la pantalla
     v3.copy(p.g.position); v3.y += 1.5; v3.project(camara);
     const vis = v3.z < 1;
@@ -612,6 +820,9 @@ function bucle(ts) {
   escena.environmentIntensity += (hora.ent - escena.environmentIntensity) * k;
   // El fondo es una textura: se cambia de golpe. La niebla es la que funde.
   escena.fog.color.lerp(new THREE.Color(hora.niebla), k);
+  // Los carteles de las cabezas no reciben luz: se tiñen con la hora a mano.
+  const tinte = new THREE.Color(hora.cara);
+  for (const m of CARTELES) m.color.lerp(tinte, k);
   control.update();
   render.render(escena, camara);
   medir(ts);
@@ -648,6 +859,6 @@ addEventListener("resize", () => {
 });
 // `?dbg` expone la escena para poder mirarla de cerca desde una prueba,
 // igual que `?vida` en la oficina de verdad. No cambia nada de lo que se ve.
-if (PARAMS.has("dbg")) Object.assign(window, { escena, camara, control, gente, render });
+if (PARAMS.has("dbg")) Object.assign(window, { escena, camara, control, gente, render, paso, camino, libre, OCUPADO, enPiso, cols, rows, VIVO_: VIVO, seLevanta_: seLevanta, PARADAS, RESERVADAS, salir, reservar_: (p) => reservar(p, null) });
 requestAnimationFrame(bucle);
 </script></body></html>

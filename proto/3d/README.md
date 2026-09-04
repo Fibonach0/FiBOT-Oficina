@@ -32,46 +32,65 @@ Parámetros en la URL:
 
 | Parámetro | Qué hace |
 |---|---|
-| `?tv=1` | Para la tele: sin controles ni textos, cámara que gira sola, medidor grande |
+| `?tv=1` | Pantalla completa: sin controles ni textos, cámara que gira sola, medidor grande |
 | `?calidad=alta\|media\|baja` | `alta`: sombras suaves y pixelRatio hasta 2 (default en escritorio). `media`: sombras simples y pixelRatio 1 (default con `?tv`). `baja`: sin sombras ni antialias |
 | `?sala=cantarini` | Qué sala dibujar (default: la primera que no sea automática) |
-| `?dbg` | Expone `escena`, `camara`, `control`, `gente` y `render` en `window` |
+| `?vida` | Acorta todos los tiempos de la vida (para las pruebas) |
+| `?dbg` | Expone `escena`, `camara`, `control`, `gente`, `render`, `paso`, `camino` y `libre` en `window` |
 
-## La prueba que decide (pendiente de Nacho)
+## Qué lo decide
 
-Abrir en el navegador de la tele **`https://oficina.fibot.ar/proto/3d/?tv=1`** y
-leer el medidor de abajo a la derecha: cuadros por segundo, resolución,
-pixelRatio, calidad y la GPU que reporta el navegador. El número se pinta en
-rojo abajo de 30, que es donde el movimiento empieza a verse a tirones.
-
-- **≥ 45 fps con `calidad=media`**: el 3D es viable en la tele y se puede
-  encarar la integración (reemplazar `isoRender()`).
-- **30–45**: probar `&calidad=baja`. Si ahí sube a más de 45, viable con
-  recortes (sin sombras).
-- **< 30 incluso en `baja`**, o la pantalla de "este navegador no tiene
-  WebGL": el isométrico SVG se queda, y el 3D queda como pieza aparte para
-  escritorio o para un Chromecast/mini-PC, no para el navegador de la tele.
-
-Sacarle una foto al medidor con el celular alcanza como registro.
+Decisión de Nacho (4/9): **la tele no es el criterio** — quizás nunca se use
+ahí. El prototipo se evalúa en el navegador de escritorio, por cómo se ve y por
+lo que muestra. `?tv=1` y el medidor de fps quedan porque no molestan, pero no
+son la prueba de nada.
 
 ## Decisiones que costaron y conviene no re-descubrir
+- **La cabeza es el dibujo de Open Peeps, de frente a la cámara** (un sprite),
+  con una esfera invisible que sólo proyecta la sombra. Se probaron dos cosas
+  antes y las dos se ven mal: la cara como plano delante de una esfera (careta:
+  se nota el borde y el aire), y la cara pintada sobre un casquete de la esfera
+  (el dibujo plano se estira en los costados, el pelo queda dos veces
+  —dibujado y como color del cráneo— con una costura, y desde atrás asoma el
+  borde de la cara). El cartel conserva la identidad exacta del avatar de la
+  oficina y no tiene costuras; el volumen lo da la sombra. Como el sprite no
+  recibe luz, se tiñe a mano con la hora del día (`cara` en `HORAS`). El
+  recorte del avatar es `viewBox="100 62 504 504"`: la cabeza en el dibujo va
+  de y≈90 a y≈560 sobre 704, y el margen extra es para los peinados altos.
+- **Los colores de piel y pelo se reconocen por paleta, no por orden.**
+  DiceBear openPeeps usa listas cerradas (piel: 5 valores; pelo: 10). La piel
+  se usa para cuello, manos y brazos. Antes "pelo" era "el primer negro que
+  aparezca", que es el trazo de ojos y boca de TODOS los avatares.
 
-- **La cara no puede ser un plano adelante de la cabeza.** Se ve como una
-  careta puesta: se nota el borde y el aire entre medio. Va sobre un **casquete
-  de la misma esfera del cráneo**, con el mismo radio, así queda pintada encima
-  y se curva con ella.
-- **El cráneo va del color del pelo**, no de la piel: lo que queda a la vista
-  por los costados y atrás es la cabellera, y de espaldas se sigue reconociendo
-  quién es.
-- **La cara va corrida por encima del ecuador** de la esfera y la cabeza lleva
-  13° de mentón arriba. Centrada al medio se ve cabizbaja, porque la cámara
-  mira desde arriba.
-- **El recorte del avatar se midió, no se estimó.** La cabeza en el dibujo de
-  Open Peeps va de y≈90 a y≈560 sobre 704; recortando a 420 quedaban la boca y
-  el mentón afuera. Un recorte mal puesto se lee como "está mirando al piso".
-- **Extruir el SVG entero no sirve** (se probó): el dibujo incluye el cuerpo, el
-  `<mask>` del viewBox entra como una placa blanca gigante, y el pelo hecho
-  sólido le tapa la cara.
+- **La gente camina por la grilla, con BFS, como en la oficina.** Cuatro
+  vecinos, sólo `alfombra` y `puerta` son transitables entre los muebles, y las
+  paredes son el borde de la grilla. Antes tres personas iban en línea recta a
+  puntos fijos, atravesando escritorios y tabiques. Del escritorio **se sale y
+  se entra por atrás o por los costados, nunca por adelante** (ahí está el
+  monitor), y el tramo silla → primera celda va primero de lado y después al
+  centro, así nunca es diagonal. La vuelta es el camino de ida al revés, para
+  que valga la misma regla. `paso(dt)` es puro cálculo, separado del dibujo:
+  la prueba corre 200 s de oficina en un segundo sin renderizar y verifica que
+  nadie pisa una celda ocupada ni corta una esquina.
+- **Quién se levanta**: el que no tiene tarea `en_curso` ni está
+  `esperando_dueno`, igual que en la oficina. Va a un mueble de
+  `ACTIVIDADES` (cafetera, heladera, dispenser, planta, sofá, pizarra, cuadro,
+  ventana), la placa dice qué hace, y vuelve a sentarse. `?vida` acorta los
+  tiempos para las pruebas.
+- **Un mueble lo usa uno por vez, y el resto hace fila.** Cada parada tiene
+  `ocupante` y `cola` (máximo 2). El que llega a un mueble ocupado va a la celda
+  disponible más cercana que NO sea pegada al mueble (un paso atrás, como una
+  cola de verdad), mira al mueble, cruza los brazos y la placa dice "espera
+  turno"; cuando el ocupante se va, el primero de la fila pasa a una celda
+  pegada. Si llega a la fila y el mueble ya se desocupó, pasa directo. Si
+  espera demasiado, se cansa y vuelve. Las celdas de destino se **reservan**
+  (`RESERVADAS`): dos personas nunca eligen la misma, ni para usar un mueble
+  ni para esperar. Bug que tuvo esto media hora: pasarle el turno a alguien
+  que **todavía venía caminando** hacia la fila lo dejaba con una ruta y una
+  fase incoherentes; ahora el turno queda anotado y avanza cuando llega. Y la
+  reserva se libera ANTES de pasar el turno, así el siguiente puede ocupar
+  justo la celda que se desocupa.
+
 - **Los escritorios están dados vuelta** respecto del isométrico: la persona
   queda del lado de la cámara y el monitor entre medio, con la pantalla
   mirándola a ella. Sentada mirando el monitor contra el fondo no se le ve la

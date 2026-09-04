@@ -449,21 +449,26 @@ mira en isométrico", adoptarlo sería **reemplazar sólo `isoRender()`**. El
 prototipo lee el mismo `layout.json`, el mismo `agents.json` y las mismas caras
 de `avatares.json`.
 
-Lo que decide si se adopta o no es **si WebGL corre fluido en el navegador de
-una tele**, que es donde vive el modo TV. Sin eso probado, el isométrico en SVG
-sigue siendo la opción segura y es lo que está en producción.
+La primera idea era que lo decidiera **si WebGL corre fluido en el navegador
+de una tele**. Nacho lo descartó (4/9): la tele quizás no se use, y el
+prototipo se evalúa en escritorio por cómo se ve y lo que muestra. Hasta que
+él diga, el isométrico SVG es lo que está en producción.
 
-Para que esa prueba se pueda hacer, el prototipo **se publica con el sitio** en
-`oficina.fibot.ar/proto/3d/` (sep 2026): dejó de necesitar `gen.py` y un
-bundle local — lee en vivo los mismos JSON de la raíz, three.js está vendoreado
-en `vendor/three/` (MIT, ver `vendor/LICENSES.md`), y el estado de los agentes
-sale del bot si hay sesión de la puerta en ese navegador (mismo origen, mismo
-`localStorage`) o de `estado.json` si no. Tiene un **medidor de fps en
-pantalla**, `?tv=1` (sin controles, cámara girando sola, medidor grande) y
-`?calidad=alta|media|baja` para bajar sombras y pixelRatio si la tele no llega.
-Los umbrales para leer el resultado están en el README del prototipo. La
-oficina de producción **no carga three.js**: sigue siendo un sitio sin
-dependencias en tiempo de ejecución.
+El prototipo **se publica con el sitio** en `oficina.fibot.ar/proto/3d/`
+(sep 2026): dejó de necesitar `gen.py` y un bundle local — lee en vivo los
+mismos JSON de la raíz, three.js está vendoreado en `vendor/three/` (MIT, ver
+`vendor/LICENSES.md`), y el estado de los agentes sale del bot si hay sesión
+de la puerta en ese navegador (mismo origen, mismo `localStorage`) o de
+`estado.json` si no. La gente **camina por la grilla con BFS** como en la
+oficina (sale y entra al escritorio por atrás o los costados, nunca por el
+monitor), hace fila cuando un mueble está ocupado, y la cabeza es el dibujo de
+Open Peeps de frente a la cámara con una esfera invisible que proyecta la
+sombra (las caras envueltas sobre una esfera se probaron y se descartaron: se
+estiran y muestran costura). La cocina está en la pared del fondo a propósito:
+así la fila queda de frente a la cámara del 3D y no detrás de la heladera. Tiene
+medidor de fps, `?tv=1`, `?calidad=` y `?vida`; los detalles y lo que costó,
+en el README del prototipo. La oficina de producción **no carga three.js**:
+sigue siendo un sitio sin dependencias en tiempo de ejecución.
 
 Las fuentes de assets con licencia libre, y qué mirar antes de bajar nada, en
 [`docs/assets-3d.md`](docs/assets-3d.md).
