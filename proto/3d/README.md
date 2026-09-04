@@ -32,29 +32,50 @@ Parámetros en la URL:
 
 | Parámetro | Qué hace |
 |---|---|
-| `?tv=1` | Para la tele: sin controles ni textos, cámara que gira sola, medidor grande |
+| `?tv=1` | Pantalla completa: sin controles ni textos, cámara que gira sola, medidor grande |
 | `?calidad=alta\|media\|baja` | `alta`: sombras suaves y pixelRatio hasta 2 (default en escritorio). `media`: sombras simples y pixelRatio 1 (default con `?tv`). `baja`: sin sombras ni antialias |
 | `?sala=cantarini` | Qué sala dibujar (default: la primera que no sea automática) |
-| `?dbg` | Expone `escena`, `camara`, `control`, `gente` y `render` en `window` |
+| `?vida` | Acorta todos los tiempos de la vida (para las pruebas) |
+| `?dbg` | Expone `escena`, `camara`, `control`, `gente`, `render`, `paso`, `camino` y `libre` en `window` |
 
-## La prueba que decide (pendiente de Nacho)
+## Qué lo decide
 
-Abrir en el navegador de la tele **`https://oficina.fibot.ar/proto/3d/?tv=1`** y
-leer el medidor de abajo a la derecha: cuadros por segundo, resolución,
-pixelRatio, calidad y la GPU que reporta el navegador. El número se pinta en
-rojo abajo de 30, que es donde el movimiento empieza a verse a tirones.
-
-- **≥ 45 fps con `calidad=media`**: el 3D es viable en la tele y se puede
-  encarar la integración (reemplazar `isoRender()`).
-- **30–45**: probar `&calidad=baja`. Si ahí sube a más de 45, viable con
-  recortes (sin sombras).
-- **< 30 incluso en `baja`**, o la pantalla de "este navegador no tiene
-  WebGL": el isométrico SVG se queda, y el 3D queda como pieza aparte para
-  escritorio o para un Chromecast/mini-PC, no para el navegador de la tele.
-
-Sacarle una foto al medidor con el celular alcanza como registro.
+Decisión de Nacho (4/9): **la tele no es el criterio** — quizás nunca se use
+ahí. El prototipo se evalúa en el navegador de escritorio, por cómo se ve y por
+lo que muestra. `?tv=1` y el medidor de fps quedan porque no molestan, pero no
+son la prueba de nada.
 
 ## Decisiones que costaron y conviene no re-descubrir
+
+- **Los colores de piel y pelo se reconocen por paleta, no por orden.**
+  DiceBear openPeeps usa listas cerradas (piel: 5 valores; pelo: 10), así que
+  se busca el primer `fill` que esté en cada lista. Antes "pelo" era "el primer
+  negro que aparezca", que es el trazo de ojos y boca de TODOS los avatares:
+  cada cráneo salía negro, incluso el de la rubia. Sin color de pelo en el
+  dibujo (pelo dibujado en negro, bandana o pelada) queda un negro azulado.
+- **La cara lleva un casquete de piel debajo.** El SVG tiene fondo
+  transparente y, sin eso, entre los trazos se veía el cráneo del color del
+  pelo. Y el casquete de la cara es más amplio que al principio (2.35 rad):
+  con 2.05 las orejas y el nacimiento del pelo quedaban cortados en un borde
+  recto, que es lo que hacía "careta". Más de ~2.4 estira el dibujo.
+- **La cara se pinta con `emissiveMap`** (intensidad .42): un dibujo plano se
+  lee peor cuanto más lo modela la luz, y del lado de la sombra se volvía
+  barro.
+- **La gente camina por la grilla, con BFS, como en la oficina.** Cuatro
+  vecinos, sólo `alfombra` y `puerta` son transitables entre los muebles, y las
+  paredes son el borde de la grilla. Antes tres personas iban en línea recta a
+  puntos fijos, atravesando escritorios y tabiques. Del escritorio **se sale y
+  se entra por atrás o por los costados, nunca por adelante** (ahí está el
+  monitor), y el tramo silla → primera celda va primero de lado y después al
+  centro, así nunca es diagonal. La vuelta es el camino de ida al revés, para
+  que valga la misma regla. `paso(dt)` es puro cálculo, separado del dibujo:
+  la prueba corre 200 s de oficina en un segundo sin renderizar y verifica que
+  nadie pisa una celda ocupada ni corta una esquina.
+- **Quién se levanta**: el que no tiene tarea `en_curso` ni está
+  `esperando_dueno`, igual que en la oficina. Va a un mueble de
+  `ACTIVIDADES` (cafetera, heladera, dispenser, planta, sofá, pizarra, cuadro,
+  ventana), la placa dice qué hace, y vuelve a sentarse. `?vida` acorta los
+  tiempos para las pruebas.
 
 - **La cara no puede ser un plano adelante de la cabeza.** Se ve como una
   careta puesta: se nota el borde y el aire entre medio. Va sobre un **casquete
