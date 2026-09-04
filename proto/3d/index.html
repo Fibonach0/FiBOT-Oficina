@@ -98,7 +98,13 @@ function cara(svg) {
   for (const id of new Set([...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]))) {
     svg = svg.split(`id="${id}"`).join(`id="${id}-${suf}"`).split(`url(#${id})`).join(`url(#${id}-${suf})`);
   }
-  return svg.replace(/^<svg[^>]*>/, '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="112 78 480 480">');
+  // Recorte elíptico del tamaño de la cabeza: algunos peinados de Open Peeps
+  // (la melena larga, por ejemplo) ocupan medio lienzo y en el cartel salían
+  // como un bloque negro detrás de la cara. La oficina lo disimula con su
+  // círculo; acá la elipse deja el mentón y el cuello enteros.
+  return svg
+    .replace(/^<svg[^>]*>/, `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="100 62 504 504"><defs><clipPath id="corte-${suf}"><ellipse cx="352" cy="318" rx="218" ry="252"/></clipPath></defs><g clip-path="url(#corte-${suf})">`)
+    .replace(/<\/svg>\s*$/, "</g></svg>");
 }
 
 function haceCuanto(iso) {
@@ -433,23 +439,21 @@ for (const o of SALA.objetos) {
 }
 
 // ---------- la gente ----------
-// El cuerpo es 3D y la cara es un sprite: así el avatar de Open Peeps que ya
-// tiene cada agente se sigue viendo igual, y siempre mira a la cámara aunque
-// gires la escena.
-// La cabeza tiene volumen de verdad: una esfera achatada con el tono de piel
-// del propio avatar, una capa de pelo por encima, y la cara del agente impresa
-// al frente. Se probó extruir el SVG entero y no sirve: el dibujo incluye el
-// cuerpo, el <mask> del viewBox entra como una placa blanca, y el pelo, hecho
-// sólido, le tapa la cara. Esto conserva la identidad y encima tira sombra.
+// El cuerpo es 3D y la cabeza es el dibujo de Open Peeps tal cual, de frente a
+// la cámara siempre (un sprite). Se probaron dos cosas antes y las dos se ven
+// mal: la cara como plano delante de una esfera (careta: se nota el borde y el
+// aire), y la cara pintada sobre un casquete de la esfera (el dibujo plano se
+// estira en los costados, el pelo queda dos veces —dibujado y como color del
+// cráneo— con una costura entre ambos, y desde atrás asoma el borde de la cara).
+// El cartel conserva la identidad exacta del avatar de la oficina, no tiene
+// costuras, y la sensación de volumen la da la sombra: una esfera invisible
+// (no escribe color ni profundidad) que sí proyecta sombra.
 const cargador = new THREE.TextureLoader();
+const CARTELES = [];   // materiales de las cabezas, para teñirlos con la hora del día
 
-// Las paletas son las de DiceBear openPeeps (vendor/openpeeps.js): piel, pelo y
-// ropa son listas cerradas, así que se reconocen por valor y no adivinando por
-// orden. Antes "pelo" era "el primer negro que aparezca", que es el trazo de los
-// ojos y la boca de TODOS los avatares: cada cabeza salía con el cráneo negro,
-// incluso la rubia. Si no hay color de pelo en el dibujo, o es pelo dibujado en
-// negro o es una cabeza con bandana/pelada: el negro azulado es lo que menos
-// desentona con ambas.
+// Las paletas son las de DiceBear openPeeps (vendor/openpeeps.js): piel y pelo
+// son listas cerradas, así que se reconocen por valor y no adivinando por orden.
+// La piel se usa para cuello, manos y brazos.
 const PALETA_PIEL = ["#694d3d", "#ae5d29", "#d08b5b", "#edb98a", "#ffdbb4"];
 const PALETA_PELO = ["#2c1b18", "#e8e1e1", "#ecdcbf", "#d6b370", "#f59797", "#b58143", "#a55728", "#724133", "#4a312c", "#c93305"];
 function coloresDe(svg) {
@@ -459,57 +463,24 @@ function coloresDe(svg) {
   return { piel, pelo };
 }
 
-function cabeza3D(svg) {
-  const { piel, pelo } = coloresDe(svg);
-  // Dos grupos anidados a propósito: el de adentro lleva el achatado de la
-  // cabeza y el de afuera la inclinación. Escalar y rotar el MISMO objeto con
-  // una escala no uniforme deforma en diagonal.
+function cabezaCartel(svg) {
   const g = new THREE.Group();
-  const cabeza = new THREE.Group();
-  const R = .22;
-
-  // El cráneo va del color del PELO: la cara se pinta sobre el frente, así que
-  // lo que queda a la vista por los costados y atrás es la cabellera.
-  const craneo = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), mat(pelo, .86));
-  craneo.castShadow = true; cabeza.add(craneo);
-  // Un poco de piel abajo, donde va el cuello.
-  const cuello = new THREE.Mesh(new THREE.CylinderGeometry(.09, .1, .1, 12), mat(piel, .82));
-  cuello.position.y = -R * .92; cabeza.add(cuello);
-
-  // La cara NO es un plano adelante (eso se ve como una careta puesta): es un
-  // casquete de la misma esfera, con el mismo radio, así queda pintada sobre
-  // la cabeza y se curva con ella.
-  // El casquete va corrido HACIA ARRIBA del ecuador: centrado al medio, la
-  // cara cae en la mitad de abajo de la cabeza y, con la cámara mirando desde
-  // arriba, se ve cabizbaja.
-  // Un casquete más amplio que antes (2.05 rad): el dibujo de Open Peeps trae
-  // orejas y el nacimiento del pelo, y con el casquete angosto quedaban
-  // cortados en un borde recto, que es lo que hacía "careta". Más de ~2.4 rad
-  // ya estira el dibujo en los costados.
-  const AN = 2.35, AL = 2.15, SUBE = .10;
-  // Debajo de la cara va un casquete del color de PIEL, un pelo más chico: el
-  // SVG tiene fondo transparente y, sin esto, entre los trazos se veía el
-  // cráneo del color del pelo (una cara "manchada").
-  const geoPiel = new THREE.SphereGeometry(R * 1.001, 48, 36,
-    Math.PI / 2 - AN / 2 + .08, AN - .16, Math.PI / 2 - AL / 2 - SUBE + .08, AL - .16);
-  cabeza.add(new THREE.Mesh(geoPiel, mat(piel, .9)));
-  const geo = new THREE.SphereGeometry(R * 1.004, 48, 36,
-    Math.PI / 2 - AN / 2, AN, Math.PI / 2 - AL / 2 - SUBE, AL);
   const tex = cargador.load("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg));
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.anisotropy = 4;
-  // Con emissiveMap la cara conserva sus colores aunque quede del lado de la
-  // sombra: un dibujo plano se lee peor cuanto más lo modela la luz.
-  const cara = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-    map: tex, emissiveMap: tex, emissive: new THREE.Color("#ffffff"), emissiveIntensity: .42,
-    transparent: true, roughness: .85, depthWrite: false,
-    polygonOffset: true, polygonOffsetFactor: -2 }));
-  cabeza.add(cara);
-
-  cabeza.scale.set(1, 1.06, .9);
-  g.add(cabeza);
-  g.rotation.x = -.13;   // un poco de mentón arriba, para que mire de frente
+  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: .35, depthWrite: true });
+  const cartel = new THREE.Sprite(m);
+  // El ancla va cerca del mentón (8% desde abajo del recorte), así el cartel
+  // se apoya en el cuello y el pelo crece hacia arriba.
+  cartel.center.set(.5, .08);
+  cartel.scale.set(.7, .7, 1);
+  g.add(cartel);
+  const R = .2;
+  const sombra = new THREE.Mesh(new THREE.SphereGeometry(R, 16, 12),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
+  sombra.castShadow = true; sombra.position.y = R * 1.1;
+  g.add(sombra);
+  CARTELES.push(m);
   return g;
 }
 
@@ -553,8 +524,8 @@ for (const o of SALA.objetos) {
   });
   const piernas = [-1, 1].map((s) => { const p = caja(.1, .3, .1, MAT.grisOsc, 0, 0, 0); escena.remove(p);
     p.position.set(s * .09, .15, 0); g.add(p); return p; });
-  const cabeza = cabeza3D(CARAS[o.agenteId]);
-  cabeza.position.y = .92; g.add(cabeza);
+  const cabeza = cabezaCartel(CARAS[o.agenteId]);
+  cabeza.position.y = .705; g.add(cabeza);   // apoyada en el cuello
   g.add(sombraContacto(.8));
   g.position.set(x, 0, z - .3);   // del lado de la cámara: se le ve la cara
   escena.add(g);
@@ -812,9 +783,9 @@ for (const p of gente) {
 
 // ---------- momentos del día ----------
 const HORAS = {
-  dia:   { sol: 2.7, solCol: "#ffe2b8", cielo: .22, punto: 0,   niebla: "#12100d", ent: .17, fondo: ["#1b1611", "#090807"] },
-  tarde: { sol: 2.0, solCol: "#ffb173", cielo: .17, punto: .45, niebla: "#181009", ent: .13,  fondo: ["#241708", "#0c0806"] },
-  noche: { sol: .28, solCol: "#7f97c9", cielo: .09, punto: 1.5, niebla: "#080b12", ent: .07, fondo: ["#0c111b", "#050609"] },
+  dia:   { sol: 2.7, solCol: "#ffe2b8", cielo: .22, punto: 0,   niebla: "#12100d", ent: .17, fondo: ["#1b1611", "#090807"], cara: "#ffffff" },
+  tarde: { sol: 2.0, solCol: "#ffb173", cielo: .17, punto: .45, niebla: "#181009", ent: .13,  fondo: ["#241708", "#0c0806"], cara: "#f3dcc4" },
+  noche: { sol: .28, solCol: "#7f97c9", cielo: .09, punto: 1.5, niebla: "#080b12", ent: .07, fondo: ["#0c111b", "#050609"], cara: "#9aa3b8" },
 };
 for (const h of Object.values(HORAS)) h.tex = fondoDegrade(h.fondo[0], h.fondo[1]);
 let hora = HORAS.dia;
@@ -849,6 +820,9 @@ function bucle(ts) {
   escena.environmentIntensity += (hora.ent - escena.environmentIntensity) * k;
   // El fondo es una textura: se cambia de golpe. La niebla es la que funde.
   escena.fog.color.lerp(new THREE.Color(hora.niebla), k);
+  // Los carteles de las cabezas no reciben luz: se tiñen con la hora a mano.
+  const tinte = new THREE.Color(hora.cara);
+  for (const m of CARTELES) m.color.lerp(tinte, k);
   control.update();
   render.render(escena, camara);
   medir(ts);

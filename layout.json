@@ -84,8 +84,8 @@
         {
           "id": "deco-cafetera-1",
           "tipo": "cafetera",
-          "x": 5,
-          "y": 6
+          "x": 1,
+          "y": 0
         },
         {
           "id": "cuadro-1",
@@ -96,20 +96,20 @@
         {
           "id": "heladera-1",
           "tipo": "heladera",
-          "x": 6,
-          "y": 6
+          "x": 2,
+          "y": 0
         },
         {
           "id": "dispenser-1",
           "tipo": "dispenser",
-          "x": 7,
-          "y": 6
+          "x": 3,
+          "y": 0
         },
         {
           "id": "cartel-railway",
           "tipo": "cartel",
-          "x": 1,
-          "y": 0,
+          "x": 6,
+          "y": 6,
           "titulo": "Railway",
           "url": "https://railway.com/project/52da22fc-a5b9-43f3-9730-514792e6368e",
           "icono": ""
@@ -117,8 +117,8 @@
         {
           "id": "cartel-flota",
           "tipo": "cartel",
-          "x": 2,
-          "y": 0,
+          "x": 7,
+          "y": 6,
           "titulo": "Flota Cantarini",
           "url": "https://flotacantarini.fibot.ar",
           "icono": ""

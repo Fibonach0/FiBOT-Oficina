@@ -46,21 +46,22 @@ lo que muestra. `?tv=1` y el medidor de fps quedan porque no molestan, pero no
 son la prueba de nada.
 
 ## Decisiones que costaron y conviene no re-descubrir
-
+- **La cabeza es el dibujo de Open Peeps, de frente a la cámara** (un sprite),
+  con una esfera invisible que sólo proyecta la sombra. Se probaron dos cosas
+  antes y las dos se ven mal: la cara como plano delante de una esfera (careta:
+  se nota el borde y el aire), y la cara pintada sobre un casquete de la esfera
+  (el dibujo plano se estira en los costados, el pelo queda dos veces
+  —dibujado y como color del cráneo— con una costura, y desde atrás asoma el
+  borde de la cara). El cartel conserva la identidad exacta del avatar de la
+  oficina y no tiene costuras; el volumen lo da la sombra. Como el sprite no
+  recibe luz, se tiñe a mano con la hora del día (`cara` en `HORAS`). El
+  recorte del avatar es `viewBox="100 62 504 504"`: la cabeza en el dibujo va
+  de y≈90 a y≈560 sobre 704, y el margen extra es para los peinados altos.
 - **Los colores de piel y pelo se reconocen por paleta, no por orden.**
-  DiceBear openPeeps usa listas cerradas (piel: 5 valores; pelo: 10), así que
-  se busca el primer `fill` que esté en cada lista. Antes "pelo" era "el primer
-  negro que aparezca", que es el trazo de ojos y boca de TODOS los avatares:
-  cada cráneo salía negro, incluso el de la rubia. Sin color de pelo en el
-  dibujo (pelo dibujado en negro, bandana o pelada) queda un negro azulado.
-- **La cara lleva un casquete de piel debajo.** El SVG tiene fondo
-  transparente y, sin eso, entre los trazos se veía el cráneo del color del
-  pelo. Y el casquete de la cara es más amplio que al principio (2.35 rad):
-  con 2.05 las orejas y el nacimiento del pelo quedaban cortados en un borde
-  recto, que es lo que hacía "careta". Más de ~2.4 estira el dibujo.
-- **La cara se pinta con `emissiveMap`** (intensidad .42): un dibujo plano se
-  lee peor cuanto más lo modela la luz, y del lado de la sombra se volvía
-  barro.
+  DiceBear openPeeps usa listas cerradas (piel: 5 valores; pelo: 10). La piel
+  se usa para cuello, manos y brazos. Antes "pelo" era "el primer negro que
+  aparezca", que es el trazo de ojos y boca de TODOS los avatares.
+
 - **La gente camina por la grilla, con BFS, como en la oficina.** Cuatro
   vecinos, sólo `alfombra` y `puerta` son transitables entre los muebles, y las
   paredes son el borde de la grilla. Antes tres personas iban en línea recta a
@@ -90,22 +91,6 @@ son la prueba de nada.
   reserva se libera ANTES de pasar el turno, así el siguiente puede ocupar
   justo la celda que se desocupa.
 
-- **La cara no puede ser un plano adelante de la cabeza.** Se ve como una
-  careta puesta: se nota el borde y el aire entre medio. Va sobre un **casquete
-  de la misma esfera del cráneo**, con el mismo radio, así queda pintada encima
-  y se curva con ella.
-- **El cráneo va del color del pelo**, no de la piel: lo que queda a la vista
-  por los costados y atrás es la cabellera, y de espaldas se sigue reconociendo
-  quién es.
-- **La cara va corrida por encima del ecuador** de la esfera y la cabeza lleva
-  13° de mentón arriba. Centrada al medio se ve cabizbaja, porque la cámara
-  mira desde arriba.
-- **El recorte del avatar se midió, no se estimó.** La cabeza en el dibujo de
-  Open Peeps va de y≈90 a y≈560 sobre 704; recortando a 420 quedaban la boca y
-  el mentón afuera. Un recorte mal puesto se lee como "está mirando al piso".
-- **Extruir el SVG entero no sirve** (se probó): el dibujo incluye el cuerpo, el
-  `<mask>` del viewBox entra como una placa blanca gigante, y el pelo hecho
-  sólido le tapa la cara.
 - **Los escritorios están dados vuelta** respecto del isométrico: la persona
   queda del lado de la cámara y el monitor entre medio, con la pantalla
   mirándola a ella. Sentada mirando el monitor contra el fondo no se le ve la

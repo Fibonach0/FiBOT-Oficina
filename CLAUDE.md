@@ -461,7 +461,11 @@ mismos JSON de la raíz, three.js está vendoreado en `vendor/three/` (MIT, ver
 de la puerta en ese navegador (mismo origen, mismo `localStorage`) o de
 `estado.json` si no. La gente **camina por la grilla con BFS** como en la
 oficina (sale y entra al escritorio por atrás o los costados, nunca por el
-monitor), y las cabezas sacan piel y pelo de las paletas de Open Peeps. Tiene
+monitor), hace fila cuando un mueble está ocupado, y la cabeza es el dibujo de
+Open Peeps de frente a la cámara con una esfera invisible que proyecta la
+sombra (las caras envueltas sobre una esfera se probaron y se descartaron: se
+estiran y muestran costura). La cocina está en la pared del fondo a propósito:
+así la fila queda de frente a la cámara del 3D y no detrás de la heladera. Tiene
 medidor de fps, `?tv=1`, `?calidad=` y `?vida`; los detalles y lo que costó,
 en el README del prototipo. La oficina de producción **no carga three.js**:
 sigue siendo un sitio sin dependencias en tiempo de ejecución.
