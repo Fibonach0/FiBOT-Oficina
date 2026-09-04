@@ -175,6 +175,60 @@
           "x": 8,
           "y": 4,
           "agenteId": "oficina"
+        },
+        {
+          "id": "pared-principal-0-2",
+          "tipo": "pared",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "id": "pared-principal-2-2",
+          "tipo": "pared",
+          "x": 2,
+          "y": 2
+        },
+        {
+          "id": "pared-principal-4-2",
+          "tipo": "pared",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "id": "pared-principal-6-2",
+          "tipo": "pared",
+          "x": 6,
+          "y": 2
+        },
+        {
+          "id": "pared-principal-1-4",
+          "tipo": "pared",
+          "x": 1,
+          "y": 4
+        },
+        {
+          "id": "pared-principal-3-4",
+          "tipo": "pared",
+          "x": 3,
+          "y": 4
+        },
+        {
+          "id": "pared-principal-7-4",
+          "tipo": "pared",
+          "x": 7,
+          "y": 4
+        },
+        {
+          "id": "pared-principal-9-4",
+          "tipo": "pared",
+          "x": 9,
+          "y": 4
+        },
+        {
+          "id": "puerta-principal-5-4",
+          "tipo": "puerta",
+          "x": 5,
+          "y": 4
         }
       ]
     },
@@ -262,6 +316,30 @@
           "tipo": "sofa",
           "x": 6,
           "y": 4
+        },
+        {
+          "id": "pared-cantarini-0-2",
+          "tipo": "pared",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "id": "pared-cantarini-2-2",
+          "tipo": "pared",
+          "x": 2,
+          "y": 2
+        },
+        {
+          "id": "pared-cantarini-6-2",
+          "tipo": "pared",
+          "x": 6,
+          "y": 2
+        },
+        {
+          "id": "puerta-cantarini-4-2",
+          "tipo": "puerta",
+          "x": 4,
+          "y": 2
         }
       ]
     },
@@ -319,6 +397,24 @@
           "id": "l-alfombra",
           "tipo": "alfombra",
           "x": 2,
+          "y": 2
+        },
+        {
+          "id": "pared-lodte-0-2",
+          "tipo": "pared",
+          "x": 0,
+          "y": 2
+        },
+        {
+          "id": "pared-lodte-5-2",
+          "tipo": "pared",
+          "x": 5,
+          "y": 2
+        },
+        {
+          "id": "puerta-lodte-3-2",
+          "tipo": "puerta",
+          "x": 3,
           "y": 2
         }
       ]

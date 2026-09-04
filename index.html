@@ -254,6 +254,66 @@
   .peep.llevando .peep-mano { display: block; }
   @media (prefers-reduced-motion: reduce) { .capa-vida { display: none; } }
 
+  /* -------- vista isométrica --------
+     Se diseña en 2D y se mira en isométrico: este bloque es sólo la vista.
+     Las bandas <svg> llevan los muebles ordenados por profundidad y los
+     recuadros de HTML (personas, carteles) se intercalan entre ellas con el
+     mismo z-index — por eso `.capa-vida` acá NO puede crear su propio contexto
+     de apilado, o los muñecos flotarían siempre por encima de los tabiques. */
+  .tablero.iso { background: #efe7d8; background-image: none; }
+  .tablero.iso .iso-banda { position: absolute; inset: 0; pointer-events: none; }
+  .tablero.iso .capa-vida { z-index: auto; }
+  /* El recuadro es un punto: lo que se ve (y lo que se toca) son sus hijos,
+     colgados de ese punto con posiciones absolutas. */
+  .iso-obj { position: absolute; width: 0; height: 0; }
+  .iso-obj-escritorio .iso-cabeza, .iso-obj-escritorio .iso-torso,
+  .iso-obj-isla .iso-sentado, .iso-cartel, .iso-cuadro { cursor: pointer; }
+  .iso-obj-escritorio .iso-cabeza { transition: transform .12s; }
+  .iso-obj-escritorio:hover .iso-cabeza { transform: translateY(-3px); }
+  .iso-nombres { position: absolute; inset: 0; z-index: 9000; pointer-events: none; }
+  .iso-et { position: absolute; width: 0; height: 0; }
+  .iso-et > b, .iso-et > span {
+    position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-size: .66rem; font-weight: 800; letter-spacing: .01em; color: #fbf6ea;
+    background: rgba(38,28,18,.72); padding: 2px 7px; border-radius: 6px;
+  }
+  .iso-et > b { top: 14px; }
+  .iso-et .iso-tazas { top: 36px; background: rgba(38,28,18,.5); padding: 1px 6px; }
+  .iso-et .iso-pregunta { top: -104px; background: var(--accent, #c1652f); color: #fff; font-size: .68rem; }
+  .iso-et.preguntando > b { background: rgba(120,54,10,.85); }
+
+  .iso-obj-escritorio .iso-cabeza { position: absolute; left: -25px; top: -84px; width: 50px; height: 50px;
+    border-radius: 50%; overflow: hidden; background: #f3eee4; border: 2px solid rgba(0,0,0,.16);
+    box-shadow: 0 3px 6px rgba(0,0,0,.26); }
+  .iso-obj-escritorio .iso-cabeza .avatar { width: 172%; height: 172%; margin: -36% 0 0 -36%; display: block; }
+  .iso-obj-escritorio .iso-torso { position: absolute; left: -18px; top: -42px; width: 36px; height: 34px;
+    border-radius: 15px 15px 8px 8px; background: var(--c); box-shadow: inset 0 -7px 11px rgba(0,0,0,.18); }
+  .iso-teclea { position: absolute; left: 18px; top: -62px; display: flex; gap: 3px; }
+  .iso-teclea i { width: 4px; height: 4px; border-radius: 50%; background: #6b6053; animation: teclea 1s infinite; }
+  .iso-teclea i:nth-child(2) { animation-delay: .16s; }
+  .iso-teclea i:nth-child(3) { animation-delay: .32s; }
+  @keyframes teclea { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+  .iso-obj-isla .iso-sentado { position: absolute; width: 34px; height: 34px; border-radius: 50%; overflow: hidden;
+    background: #f3eee4; border: 2px solid rgba(0,0,0,.16); }
+  .iso-obj-isla .iso-sentado .avatar { width: 172%; height: 172%; margin: -36% 0 0 -36%; display: block; }
+  .iso-obj-isla .s0 { left: -17px; top: -66px; }
+  .iso-obj-isla .s1 { left: 22px; top: -44px; }
+  .iso-obj-isla .s2 { left: -17px; top: -22px; }
+  .iso-obj-isla .s3 { left: -56px; top: -44px; }
+
+  .iso-cartel { position: absolute; left: -38px; top: -110px; width: 76px; min-height: 46px;
+    background: #fbf5e6; border: 3px solid var(--wood-dark); border-radius: 6px; box-shadow: 0 4px 0 #8a6d2f;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: 5px 6px; cursor: pointer; }
+  .iso-cartel span { font-size: .58rem; font-weight: 800; text-align: center; line-height: 1.12; }
+  .iso-cartel .cartel-fav, .iso-cartel .cartel-icono { width: 16px; height: 16px; font-size: .85rem; line-height: 1; }
+  .iso-cuadro { position: absolute; left: -39px; top: -140px; width: 78px; padding: 6px 6px 4px;
+    background: #f7f0df; border: 4px solid #c99a4e; border-radius: 4px; box-shadow: 0 4px 0 #8a6d2f; text-align: center; }
+  .iso-cuadro .avatar { width: 52px; height: 52px; }
+  .iso-cuadro .trofeo { display: block; font-size: .8rem; }
+  .iso-cuadro.vacio { font-size: .6rem; font-weight: 700; color: var(--muted); padding: 14px 6px; }
+
   /* carteles: pizarras que son links a sitios */
   .cartel { width: 104px; height: 66px; background: #fbf5e6; border: 4px solid var(--wood-dark); border-radius: 6px; box-shadow: 0 3px 0 #8a6d2f; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; transition: transform .12s; }
   .tablero:not(.modo-diseno) .objeto.cartel-obj { cursor: pointer; }
@@ -1618,6 +1678,279 @@ function disenoSerializable(diseno) {
   return { salas: (diseno || DISENO).salas.map((s) => (salaEsAuto(s) ? { ...s, objetos: [] } : s)) };
 }
 
+// ---------- vista isométrica ----------
+// Decisión de Nacho: se DISEÑA en 2D desde arriba y se MIRA en isométrico. Por
+// eso toda la interacción del Modo diseño (arrastrar, pinceles, rotar, colocar,
+// achicar la grilla) quedó intacta sobre el render plano de siempre: acá abajo
+// no hay una sola línea de interacción, sólo dibujo. El `layout.json` es el
+// mismo — misma grilla, mismas celdas, mismos objetos.
+//
+// La proyección es dimétrica 2:1 (ancho de rombo = `cell`, alto = `cell/2`),
+// la misma de los juegos isométricos clásicos: una celda de la grilla plana es
+// un rombo, y todo lo que se apoya en ella se dibuja como una caja.
+
+let ISO_T = null; // medidas del lienzo isométrico, recalculadas en cada render
+
+function isoActivo() { return !modoDiseno && !salaEsAuto(LAYOUT); }
+
+function isoMedidas() {
+  const { cols, rows, cell } = LAYOUT.grid;
+  const TW = cell, TH = cell / 2;
+  const aire = Math.round(cell * 1.15); // lugar arriba para muros y cabezas
+  return {
+    TW, TH, cell, aire,
+    ox: (rows - 0.5) * TW / 2 + 10,
+    oy: aire,
+    w: Math.round((cols - 1 + rows - 1) * TW / 2 + TW + 20),
+    h: Math.round((cols - 1 + rows - 1) * TH / 2 + TH + aire + cell * 0.45),
+  };
+}
+
+function isoXY(gx, gy) {
+  return [(gx - gy) * ISO_T.TW / 2 + ISO_T.ox, (gx + gy) * ISO_T.TH / 2 + ISO_T.oy];
+}
+
+// Profundidad: lo que tiene mayor (x+y) está más cerca de la cámara. Las bandas
+// del SVG y los recuadros de HTML comparten esta escala, si no los muñecos
+// flotarían siempre por encima de los tabiques en vez de meterse detrás.
+function isoZ(gx, gy) { return Math.round((gx + gy) * 10) + 500; }
+
+function isoTono(hex, f) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+    .map((v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, "0"));
+  return "#" + c.join("");
+}
+
+function isoPts(ps) { return ps.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" "); }
+
+// Caja isométrica apoyada en la celda (gx,gy): ancho/fondo en celdas, alto y
+// elevación en píxeles. Se dibujan las tres caras que ve la cámara.
+function isoCaja(gx, gy, w, d, h, color, z = 0) {
+  const esq = [[gx - .5, gy - .5], [gx - .5 + w, gy - .5], [gx - .5 + w, gy - .5 + d], [gx - .5, gy - .5 + d]];
+  const b = esq.map(([a, c]) => { const [x, y] = isoXY(a, c); return [x, y - z]; });
+  const t = b.map(([x, y]) => [x, y - h]);
+  return `<polygon points="${isoPts([t[1], t[2], b[2], b[1]])}" fill="${isoTono(color, .72)}"/>`
+       + `<polygon points="${isoPts([t[2], t[3], b[3], b[2]])}" fill="${isoTono(color, .87)}"/>`
+       + `<polygon points="${isoPts(t)}" fill="${color}"/>`;
+}
+
+// Caja centrada en la celda, con corrimiento opcional dentro de ella. Es la
+// que se usa para casi todo: razonar con "ancho 0.5 en el medio, corrida 0.3
+// hacia la cámara" es mucho menos propenso a errores que calcular la esquina.
+function isoCajaC(gx, gy, w, d, h, color, z = 0, ox = 0, oy = 0) {
+  return isoCaja(gx + (1 - w) / 2 + ox, gy + (1 - d) / 2 + oy, w, d, h, color, z);
+}
+
+// Superficie plana sobre el piso (alfombras, la mesa de una isla vista de arriba).
+function isoPlano(gx, gy, w, d, color, op = 1, z = 0) {
+  const p = [[gx - .5, gy - .5], [gx - .5 + w, gy - .5], [gx - .5 + w, gy - .5 + d], [gx - .5, gy - .5 + d]]
+    .map(([a, c]) => { const [x, y] = isoXY(a, c); return [x, y - z]; });
+  return `<polygon points="${isoPts(p)}" fill="${color}" opacity="${op}"/>`;
+}
+
+function isoDisco(gx, gy, r, color, z = 0) {
+  const [x, y] = isoXY(gx, gy);
+  return `<ellipse cx="${x.toFixed(1)}" cy="${(y - z).toFixed(1)}" rx="${(r * ISO_T.TW / 2).toFixed(1)}" ry="${(r * ISO_T.TH / 2).toFixed(1)}" fill="${color}"/>`;
+}
+
+function isoPiso() {
+  const { cols, rows } = LAYOUT.grid;
+  const mitadW = ISO_T.TW / 2, mitadH = ISO_T.TH / 2;
+  let s = "";
+  for (let gy = 0; gy < rows; gy++) {
+    for (let gx = 0; gx < cols; gx++) {
+      const [x, y] = isoXY(gx, gy);
+      const c = (gx + gy) % 2 === 0 ? "#dccbab" : "#d5c4a4";
+      s += `<polygon points="${isoPts([[x, y - mitadH], [x + mitadW, y], [x, y + mitadH], [x - mitadW, y]])}" fill="${c}" stroke="rgba(95,72,40,.06)"/>`;
+    }
+  }
+  return s;
+}
+
+// Los muebles se dibujan con alturas relativas a la celda: así una sala con
+// celdas de 140 y otra de 100 se ven proporcionadas igual.
+const ISO_DIBUJO = {
+  muro: (o, A) => isoCaja(o.x, o.y, 1, 1, A(.62), "#ded6c7"),
+  puerta: (o, A) => isoCajaC(o.x, o.y, .16, .2, A(.46), "#cfe0d6", 0, 0, -.4)
+    + isoCajaC(o.x, o.y, .16, .2, A(.46), "#cfe0d6", 0, 0, .4)
+    + isoCajaC(o.x, o.y, .1, .5, A(.44), "#b98a54", 0, -.3, .16),
+  // El "Divisor" de la paleta es el tipo `pared`: es lo que arma los cubículos.
+  // Un tabique bajo, orientado según la rotación puesta en el Modo diseño.
+  pared: (o, A) => ((o.rot || 0) % 180 === 90
+    ? isoCajaC(o.x, o.y, 1, .16, A(.46), "#cfe0d6")
+    : isoCajaC(o.x, o.y, .16, 1, A(.46), "#cfe0d6")),
+  ventana: (o, A) => isoCajaC(o.x, o.y, 1, .18, A(.62), "#ded6c7", 0, 0, -.28)
+    + isoCajaC(o.x, o.y, .8, .18, A(.24), "#c3dfe4", A(.28), 0, -.28),
+  alfombra: (o) => isoPlano(o.x, o.y, 1, 1, "#c3aed6", .8),
+  planta: (o, A) => {
+    const [x, y] = isoXY(o.x, o.y);
+    const p = A(.2), r = A(.15);
+    return isoCajaC(o.x, o.y, .5, .5, p, "#b8724a")
+      + `<circle cx="${x.toFixed(1)}" cy="${(y - p - r * .85).toFixed(1)}" r="${r.toFixed(1)}" fill="#5aa06b"/>`
+      + `<circle cx="${(x - r * .82).toFixed(1)}" cy="${(y - p - r * .28).toFixed(1)}" r="${(r * .7).toFixed(1)}" fill="#4f9260"/>`
+      + `<circle cx="${(x + r * .82).toFixed(1)}" cy="${(y - p - r * .34).toFixed(1)}" r="${(r * .66).toFixed(1)}" fill="#67ad78"/>`;
+  },
+  estanteria: (o, A) => isoCajaC(o.x, o.y, .9, .36, A(.62), "#a9764a", 0, 0, -.24)
+    + isoPlano(o.x + .06, o.y + .1, .78, .28, "#6f4a2c", .55, A(.42))
+    + isoPlano(o.x + .06, o.y + .1, .78, .28, "#6f4a2c", .55, A(.24)),
+  sofa: (o, A) => isoCajaC(o.x, o.y, .92, .56, A(.2), "#8f7fb0", 0, 0, .06)
+    + isoCajaC(o.x, o.y, .92, .16, A(.3), "#7e6ea0", A(.08), 0, -.28),
+  cafetera: (o, A) => isoCajaC(o.x, o.y, .52, .52, A(.46), "#e2e2e2")
+    + isoCajaC(o.x, o.y, .4, .4, A(.06), "#3b3b3b", A(.46))
+    + isoCajaC(o.x, o.y, .3, .06, A(.1), "#8a6d2f", A(.2), 0, .18),
+  dispenser: (o, A) => isoCajaC(o.x, o.y, .4, .4, A(.32), "#dfe6ea")
+    + isoCajaC(o.x, o.y, .32, .32, A(.24), "#a8d8e6", A(.32)),
+  archivero: (o, A) => isoCajaC(o.x, o.y, .74, .5, A(.42), "#8d8377")
+    + isoPlano(o.x + .13, o.y + .74, .74, .03, "#5f574d", 1, A(.3))
+    + isoPlano(o.x + .13, o.y + .74, .74, .03, "#5f574d", 1, A(.16)),
+  impresora: (o, A) => isoCajaC(o.x, o.y, .66, .48, A(.22), "#cfcfcf")
+    + isoCajaC(o.x, o.y, .5, .34, A(.03), "#f6f4ef", A(.22)),
+  pizarra: (o, A) => isoCajaC(o.x, o.y, .86, .09, A(.4), "#2f3a34", A(.18), 0, -.18)
+    + isoCajaC(o.x, o.y, .1, .06, A(.18), "#6b5a44", 0, 0, -.18),
+  heladera: (o, A) => isoCajaC(o.x, o.y, .58, .5, A(.62), "#e8ecee")
+    + isoPlano(o.x + .21, o.y + .74, .58, .03, "#b9c2c7", 1, A(.36))
+    + isoCajaC(o.x, o.y, .05, .04, A(.14), "#9aa3a8", A(.4), .2, .24),
+  reloj: (o, A) => isoDisco(o.x, o.y, .3, "#f4efe4", A(.5)) + isoDisco(o.x, o.y, .22, "#cfc6b4", A(.505)),
+  // Escritorio: tapa en el fondo de la celda, monitor apoyado encima, y la
+  // silla adelante — la persona (que es HTML, para reusar el avatar) se
+  // dibuja sobre esa silla, no en el centro de la celda.
+  escritorio: (o, A, ctx) => {
+    const col = ctx.color || "#7a6f60";
+    return isoCajaC(o.x, o.y, 1, .5, A(.24), "#b58255", 0, 0, -.2)
+      + isoCajaC(o.x, o.y, .34, .06, A(.24), "#39414d", A(.24), .16, -.3)
+      + isoCajaC(o.x, o.y, .2, .14, A(.02), "#2c333d", A(.24), .16, -.24)
+      + isoCajaC(o.x, o.y, .46, .46, A(.13), col, 0, 0, .3)
+      + isoCajaC(o.x, o.y, .46, .1, A(.28), isoTono(col, .84), A(.13), 0, .52);
+  },
+  isla: (o, A) => isoCajaC(o.x, o.y, .2, .2, A(.2), "#8d6039") + isoDisco(o.x, o.y, .82, "#b58255", A(.2)),
+  cartel: (o, A) => isoCajaC(o.x, o.y, .1, .1, A(.4), "#8a6d2f"),
+  cuadro: (o, A) => isoCajaC(o.x, o.y, .1, .1, A(.34), "#8a6d2f"),
+  _deco: (o, A) => isoCajaC(o.x, o.y, .5, .5, A(.24), "#b0a08c"),
+};
+
+function isoRender() {
+  ISO_T = isoMedidas();
+  const A = (f) => Math.round(ISO_T.cell * f);
+  tablero.className = "tablero iso";
+  tablero.style.width = ISO_T.w + "px";
+  tablero.style.height = ISO_T.h + "px";
+  tablero.innerHTML = "";
+
+  // Las piezas se agrupan en bandas de profundidad; cada banda es un <svg>
+  // con su z-index, y así los recuadros de HTML (personas, carteles) se
+  // intercalan entre los muebles en vez de quedar todos por encima.
+  const bandas = new Map();
+  const poner = (prof, svg) => {
+    const k = Math.round(prof);
+    if (!bandas.has(k)) bandas.set(k, []);
+    bandas.get(k).push(svg);
+  };
+  poner(-9999, isoPiso());
+  LAYOUT.objetos.forEach((o) => {
+    const dib = ISO_DIBUJO[o.tipo] || ISO_DIBUJO._deco;
+    const agente = o.agenteId ? AGENTES.find((a) => a.id === o.agenteId) : null;
+    poner(o.x + o.y, dib(o, A, { color: agente && agente.color }));
+  });
+
+  const partes = [...bandas.keys()].sort((a, b) => a - b).map((k) =>
+    `<svg class="iso-banda" style="z-index:${k === -9999 ? 1 : isoZ(k, 0) - 5}" width="${ISO_T.w}" height="${ISO_T.h}" viewBox="0 0 ${ISO_T.w} ${ISO_T.h}">${bandas.get(k).join("")}</svg>`);
+  tablero.innerHTML = partes.join("");
+
+  // Las etiquetas van en su propia capa por encima de todo: que un tabique
+  // tape el cuerpo de alguien es correcto, que le tape el nombre no.
+  const nombres = document.createElement("div");
+  nombres.className = "iso-nombres";
+  LAYOUT.objetos.forEach((o) => {
+    const el = isoRecuadro(o);
+    if (el) tablero.appendChild(el);
+    const et = isoEtiqueta(o);
+    if (et) nombres.appendChild(et);
+  });
+  tablero.appendChild(nombres);
+}
+
+function isoUbicar(el, gx, gy, dy = 0) {
+  const [x, y] = isoXY(gx, gy);
+  el.style.transform = `translate(${x.toFixed(1)}px, ${(y + dy).toFixed(1)}px)`;
+}
+
+// Lo que se puede tocar (escritorios, islas, carteles, el cuadro) va como HTML
+// para reusar los avatares y los mismos manejadores de siempre.
+function isoRecuadro(obj) {
+  let dentro = "";
+  if (obj.tipo === "escritorio") {
+    const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+    if (!agente || vidaEstaFuera(agente.id)) return null; // salió: la silla queda vacía
+    const vivo = estadoVivoDe(agente.id);
+    const tecleando = vivo && vivo.estado === "en_curso" ? `<div class="iso-teclea"><i></i><i></i><i></i></div>` : "";
+    dentro = `<div class="iso-cabeza">${avatarParaAgente(agente)}</div><div class="iso-torso" style="--c:${agente.color || "#7a6f60"}"></div>${tecleando}`;
+  } else if (obj.tipo === "isla") {
+    const asientos = (obj.asientos || []).filter(Boolean);
+    if (!asientos.length) return null;
+    dentro = asientos.map((id, i) => {
+      const ag = AGENTES.find((a) => a.id === id);
+      return ag ? `<div class="iso-sentado s${i}" title="${escaparHTML(ag.nombre)}">${avatarParaAgente(ag)}</div>` : "";
+    }).join("");
+  } else if (obj.tipo === "cartel") {
+    const dominio = dominioDe(obj.url);
+    const icono = obj.icono
+      ? `<span class="cartel-icono">${escaparHTML(obj.icono)}</span>`
+      : (dominio ? `<img class="cartel-fav" src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=64" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'cartel-icono',textContent:'🔗'}))">` : `<span class="cartel-icono">🔗</span>`);
+    dentro = `<div class="iso-cartel" title="${escaparHTML(obj.url || "sin link todavía")}">${icono}<span>${escaparHTML(obj.titulo || "Cartel")}</span></div>`;
+  } else if (obj.tipo === "cuadro") {
+    const adm = ESTADO && ESTADO.agente_del_mes;
+    const ag = adm ? AGENTES.find((a) => a.id === adm.id) : null;
+    dentro = ag
+      ? `<div class="iso-cuadro" title="${escaparHTML(ag.nombre)} · ${adm.provisional ? "va ganando" : "agente del mes"}">${avatarParaAgente(ag)}<span class="trofeo">🏆</span></div>`
+      : `<div class="iso-cuadro vacio">Agente<br>del mes</div>`;
+  } else {
+    return null;
+  }
+  const el = document.createElement("div");
+  el.className = "iso-obj iso-obj-" + obj.tipo; // prefijo propio: si compartiera
+  // nombre con la pieza de adentro (`iso-cartel`), el CSS de esa pieza le
+  // pintaría un duplicado vacío al contenedor.
+  el.dataset.id = obj.id;
+  el.style.zIndex = isoZ(obj.x, obj.y);
+  el.innerHTML = dentro;
+  // El escritorio pone la silla adelante de la celda: ahí va la persona.
+  isoUbicar(el, obj.x, obj.tipo === "escritorio" ? obj.y + .3 : obj.y);
+  el.addEventListener("click", (e) => onClickObjeto(e, obj));
+  return el;
+}
+
+function isoEtiqueta(obj) {
+  let texto = "", extra = "", clase = "";
+  if (obj.tipo === "escritorio") {
+    const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+    if (!agente) return null;
+    texto = agente.nombre;
+    if (esAgenteDelMes(agente.id)) texto += " 🏆";
+    const vivo = estadoVivoDe(agente.id);
+    const tazas = tazasDe(agente.id);
+    if (tazas) extra += `<span class="iso-tazas" title="${tazas} tarea${tazas === 1 ? "" : "s"} este mes">${tazasHTML(tazas)}</span>`;
+    if (vivo && vivo.estado === "esperando_dueno") {
+      clase = " preguntando";
+      extra += `<span class="iso-pregunta" title="${escaparHTML(vivo.pregunta || "")}">te pregunta algo</span>`;
+    }
+  } else if (obj.tipo === "isla") {
+    const nombres = (obj.asientos || []).filter(Boolean)
+      .map((id) => (AGENTES.find((a) => a.id === id) || {}).nombre).filter(Boolean);
+    if (!nombres.length) return null;
+    texto = nombres.join(" · ");
+  } else {
+    return null;
+  }
+  const el = document.createElement("div");
+  el.className = "iso-et" + clase;
+  el.innerHTML = `<b>${escaparHTML(texto)}</b>${extra}`;
+  isoUbicar(el, obj.x, obj.tipo === "escritorio" ? obj.y + .3 : obj.y);
+  return el;
+}
+
 // ---------- render ----------
 
 const tablero = document.getElementById("tablero");
@@ -1627,13 +1960,20 @@ function render() {
     LAYOUT.objetos = objetosDeCostos();
     ajustarGridCostos(LAYOUT, LAYOUT.objetos);
   }
-  const { cols, rows, cell } = LAYOUT.grid;
-  tablero.style.width = cols * cell + "px";
-  tablero.style.height = rows * cell + "px";
-  tablero.style.backgroundSize = `${cell}px ${cell}px, ${cell}px ${cell}px, 68px 68px`;
-  tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "") + (modoDiseno && PINCELES.has(herramientaArmada) ? " pincel-" + herramientaArmada : "");
-  tablero.innerHTML = "";
-  LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
+  // Se diseña en 2D desde arriba y se mira en isométrico. Las salas
+  // automáticas (Payroll) son un tablero de datos, no una oficina: ahí no hay
+  // nada que proyectar y los números tienen que leerse, así que quedan planas.
+  if (isoActivo()) {
+    isoRender();
+  } else {
+    const { cols, rows, cell } = LAYOUT.grid;
+    tablero.style.width = cols * cell + "px";
+    tablero.style.height = rows * cell + "px";
+    tablero.style.backgroundSize = `${cell}px ${cell}px, ${cell}px ${cell}px, 68px 68px`;
+    tablero.className = "tablero" + (modoDiseno ? " modo-diseno" : "") + (modoDiseno && PINCELES.has(herramientaArmada) ? " pincel-" + herramientaArmada : "");
+    tablero.innerHTML = "";
+    LAYOUT.objetos.forEach((obj) => tablero.appendChild(elementoDe(obj)));
+  }
   montarVida();
   renderSalas();
   renderPaleta();
@@ -2371,6 +2711,14 @@ function montarVida() {
   if (!VIDA.raf) VIDA.raf = requestAnimationFrame(tickVida);
 }
 function posicionarPeep(p) {
+  if (isoActivo() && ISO_T) {
+    const [x, y] = isoXY(p.x, p.y);
+    p.el.style.transform = `translate(${(x - 28).toFixed(1)}px, ${(y - ISO_T.cell * 0.62).toFixed(1)}px)`;
+    // Comparte la escala de profundidad con las bandas del SVG: así el que
+    // camina detrás de un tabique se ve tapado, como corresponde.
+    p.el.style.zIndex = isoZ(p.x, p.y);
+    return;
+  }
   const { cell } = LAYOUT.grid;
   p.el.style.transform = `translate(${p.x * cell + cell / 2 - 28}px, ${p.y * cell + cell / 2 - 44}px)`;
 }
