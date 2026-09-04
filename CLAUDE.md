@@ -676,8 +676,68 @@ esconde exactamente esta clase de bug. En GitHub Pages, una vez emitido el
 certificado, activar **Enforce HTTPS** en Settings → Pages para que `http`
 redirija solo.
 
+## Empezá acá — estado y frentes abiertos (4/9/2026)
+
+Esta sección es la foto del momento, para que una sesión dedicada a la oficina
+arranque sabiendo qué está hecho, qué está a medias y qué depende de Nacho.
+Todo lo técnico está más arriba; acá va sólo el estado.
+
+### Andando en producción
+
+Salas con pestañas, modo diseño completo (muebles, pinceles de muro, puertas,
+islas, goma, rotar, agrandar/achicar), **vista isométrica** con cubículos y
+placa de tarea por puesto, vida en la oficina (los muñecos caminan, se sientan,
+van a la cocina, juntan tazas), sala **Payroll** automática, modo TV, editor de
+apariencia, y la puerta con login de Supabase.
+
+### Frentes abiertos
+
+1. **3D real vs. isométrico SVG — sin decidir.** En `proto/3d/` hay un
+   prototipo Three.js con cabezas 3D, caras impresas sobre un casquete
+   esférico, brazos y luz IBL. Es **una maqueta, no la oficina**: no lee
+   `estado.json`, no tiene modo diseño, no tiene puerta. La pregunta que lo
+   decide es cómo se ve **en la tele de la pared** — el isométrico SVG que hoy
+   está en producción se lee perfecto ahí, y el 3D todavía no se probó. Hasta
+   que esa prueba exista, lo que está en producción es lo bueno.
+2. **Los cubículos nuevos no se ven en el navegador de Nacho.** Se agregaron
+   tabiques al `layout.json` oficial, pero **un boceto local le gana al
+   oficial** y `asegurarSalasOficiales()` inyecta *salas* faltantes, no muebles
+   dentro de una sala que ya existe. Para verlos: agregar los Divisores a mano
+   en Modo diseño, o "Restablecer al oficial" (que borra el boceto local).
+3. **`OFICINA_API` sin setear.** Hasta que apunte al bot, la oficina lee
+   `estado.json` (muestra estática), Payroll muestra el pizarrón que lo explica
+   y el botón Enviar queda deshabilitado.
+4. **La rama por defecto en GitHub es `init`, y está mal.** `init` es el commit
+   inicial del repo y quedó marcado como default; **el tronco real es `main`**,
+   que es donde vive todo lo de arriba. Consecuencias mientras no se corrija:
+   un PR abierto sin elegir base apunta a `init` y se compara contra la primera
+   versión del sitio, y una sesión nueva que clone el repo sin especificar rama
+   se lleva esa versión vieja. Pasarla a `main` es un pendiente de Nacho
+   (Settings → Branches), y también lo pide el workflow de despacho de Claude
+   Code.
+
+### La otra mitad vive en Personal-FiBOT
+
+Este repo **sólo dibuja**. Los datos salen de `GET /oficina/estado` y
+`GET /oficina/costos`, los pedidos entran por `POST /oficina/pedir` y los
+agentes reportan por `POST /oficina/reportar` — todo en `index.ts` de
+**`Fibonach0/Personal-FiBOT`**, contra la tabla `oficina_tareas`. Tocar el
+contrato es tocar los dos repos en el mismo laburo.
+
+Dos cosas de allá que muerden acá:
+
+- **Los ids de `agents.json` tienen que coincidir** con los de
+  `OFICINA_AGENTES_DEFAULT` en Personal-FiBOT. Si se renombra un agente acá y
+  no allá, las tareas delegadas no encuentran su escritorio.
+- La prospección, que es el agente más activo del panel, tiene su propio manual
+  en `PROSPECCION.md` de ese repo. No hace falta leerlo para trabajar acá.
+
 ## Convenciones
 
-- **Nunca commitear directo a `main`**: rama + PR.
+- **Nunca commitear directo a `main`**: rama + PR. Ojo al abrir el PR: la base
+  tiene que ser **`main`**, no el `init` que GitHub ofrece por defecto.
 - Sitio estático: sin build, sin dependencias, se edita y se pushea.
 - Cero credenciales acá — este repo es público y sirve una página pública.
+- Al tocar `layout.json`, volver a correr el BFS: **una sola región conectada**
+  y **ningún escritorio sin vecino transitable**. Tres intentos de este layout
+  partieron el piso en dos y lo agarró el chequeo, no la pantalla.
