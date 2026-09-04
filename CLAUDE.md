@@ -344,6 +344,47 @@ y salvo en una sala automática.
 - **El contenedor mide 0×0**: es un punto del que cuelgan los hijos con
   posiciones absolutas. Lo que se toca son los hijos, no el contenedor.
 
+### La placa del cubículo: qué está haciendo cada uno
+
+La primera versión isométrica mostraba quién estaba sentado y quién daba
+vueltas, pero **no en qué andaba** — eso salía sólo al hacer click. Ahora cada
+puesto tiene su **placa**: punto de color con el estado, nombre, la tarea, y
+hace cuánto reportó. Si te está esperando, la placa se pone naranja y muestra
+**la pregunta en lugar de la tarea**, que es lo que importa en ese momento.
+
+El estado va como color y no como palabra: en una pantalla de pared el texto no
+se alcanza a leer y el color sí. Cuando el agente nunca reportó queda la `nota`
+de `agents.json`, en itálica y apagada — describe al agente, no lo que está
+haciendo, y no tiene que leerse como una tarea en curso.
+
+**La placa está corrida a la derecha a propósito.** Los cubículos quedan
+escalonados y, en esta proyección, el vecino que tapa siempre cae abajo a la
+IZQUIERDA: sin ese corrimiento la placa le pisa la cara. El test lo comprueba
+por geometría (ninguna placa se superpone con ninguna cabeza), así que un
+layout nuevo que rompa eso se cae en el test y no en la pantalla de Nacho.
+
+### Que el que se levanta no quede además sentado
+
+Bug real de la primera versión: al salir a la cafetera, el avatar **seguía
+sentado en su silla** y aparecía dos veces. `salirPeep`/`sentarPeep` buscaban
+el avatar en `.objeto[data-id] .avatar-wrap`, que es el DOM del render **plano**
+— en isométrico ese nodo no existe y el `querySelector` devolvía `null` sin
+error. Ahora hay una sola `mostrarSentado(p, sentado)` que sabe de las dos
+vistas, y el puesto isométrico **siempre se crea** y se esconde con `display`
+en vez de no existir, para poder volver a mostrarlo sin rehacer el render.
+
+La invariante que verifica el test: **cada agente se ve exactamente una vez** —
+o sentado en su puesto, o caminando. Se mide muestreando el DOM 14 veces con
+`?vida` (que acelera los tiempos) y llegando a tener los 10 caminando a la vez.
+
+El que camina usa `cuerpoIsoSVG()`: el cuerpo de la vista plana está dibujado
+en planta y de frente quedaba raro. Conserva las clases `.pierna-i`/`.pierna-d`
+para que la animación de caminata siga siendo la misma, y la cabeza usa el
+mismo círculo con fondo claro que el que está sentado, así son la misma persona.
+
+Las **tazas** (una por tarea del mes) se dibujan apoyadas en la tapa del
+escritorio, no en la placa: colgadas de la etiqueta quedaban flotando en el aire.
+
 ### Los cubículos y el pasillo
 
 Los tabiques (`pared`) laterales entre escritorio y escritorio son lo que
