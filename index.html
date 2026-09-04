@@ -1696,6 +1696,98 @@ function asegurarSalasOficiales(diseno, oficial) {
   return sumadas;
 }
 
+// Y LO MISMO PASA CON LOS MUEBLES: un tabique agregado al oficial dentro de una
+// sala que el boceto ya tenía no llega nunca, porque lo de arriba sólo suma salas
+// enteras. Tampoco hipotético: los cubículos (PR #17) se agregaron a Principal y
+// en el navegador de Nacho no aparecieron. Acá se ofrece UNA vez cada mueble del
+// oficial que el boceto no tenga (por id), con las mismas reglas que las salas:
+// el registro recuerda cuáles ya se ofrecieron, así borrar uno a propósito no lo
+// revive. El boceto siempre gana: si la celda ya está usada, si el mueble cae
+// fuera de la grilla local, o si es un escritorio de un agente que ya tiene el
+// suyo (con otro id), no se mete — pero queda anotado como ofrecido.
+const CLAVE_OBJETOS_INYECTADOS = "fibot-oficina-objetos-inyectados";
+
+function objetosYaInyectados() {
+  try { return new Set(JSON.parse(localStorage.getItem(CLAVE_OBJETOS_INYECTADOS) || "[]")); }
+  catch (e) { return new Set(); }
+}
+
+// Salud del piso de una sala, con el mismo criterio que el chequeo de layout.json:
+// cuántas regiones libres conectadas hay y cuántos escritorios quedaron sin un
+// vecino transitable. Un mueble nuevo sólo entra si no empeora ninguno de los dos:
+// un tabique del oficial puesto sobre un boceto donde los escritorios están en
+// otro lado podría encerrar a un muñeco en su propio cubículo.
+function saludPiso(sala) {
+  const { cols, rows } = sala.grid;
+  const oc = new Set();
+  sala.objetos.forEach((o) => { if (!CAMINABLE.has(o.tipo)) oc.add(o.x + "," + o.y); });
+  const libreEn = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows && !oc.has(x + "," + y);
+  const vecinos = (x, y) => [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+  const aislados = sala.objetos.filter((o) => o.tipo === "escritorio" && !vecinos(o.x, o.y).some(([x, y]) => libreEn(x, y))).length;
+  const visto = new Set();
+  let regiones = 0;
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    if (!libreEn(x, y) || visto.has(x + "," + y)) continue;
+    regiones++;
+    const cola = [[x, y]];
+    visto.add(x + "," + y);
+    while (cola.length) {
+      const [cx, cy] = cola.shift();
+      for (const [nx, ny] of vecinos(cx, cy)) {
+        const k = nx + "," + ny;
+        if (libreEn(nx, ny) && !visto.has(k)) { visto.add(k); cola.push([nx, ny]); }
+      }
+    }
+  }
+  return { regiones, aislados };
+}
+
+function asegurarMueblesOficiales(diseno, oficial) {
+  if (!diseno || !Array.isArray(diseno.salas) || !oficial || !Array.isArray(oficial.salas)) return [];
+  const ya = objetosYaInyectados();
+  const resumen = [];
+  let ofrecidos = 0;
+  const conEscritorio = new Set();
+  diseno.salas.forEach((s) => s.objetos.forEach((o) => { if (o.tipo === "escritorio" && o.agenteId) conEscritorio.add(o.agenteId); }));
+  oficial.salas.forEach((so) => {
+    if (salaEsAuto(so)) return; // sus muebles se regeneran de los datos
+    const sl = diseno.salas.find((s) => s.id === so.id);
+    if (!sl || salaEsAuto(sl)) return;
+    const ids = new Set(sl.objetos.map((o) => o.id));
+    const ocupadas = new Set(sl.objetos.map((o) => o.x + "," + o.y));
+    let n = 0;
+    so.objetos.forEach((o) => {
+      const clave = so.id + "/" + o.id;
+      if (!o.id || ids.has(o.id) || ya.has(clave)) return;
+      ya.add(clave); ofrecidos++;
+      if (o.x < 0 || o.y < 0 || o.x >= sl.grid.cols || o.y >= sl.grid.rows) return; // fuera de la grilla local
+      if (ocupadas.has(o.x + "," + o.y)) return; // la celda la usa algo del boceto
+      if (o.tipo === "escritorio" && o.agenteId && conEscritorio.has(o.agenteId)) return; // ya tiene el suyo
+      const copia = JSON.parse(JSON.stringify(o));
+      if (!CAMINABLE.has(o.tipo)) {
+        const antes = saludPiso(sl);
+        sl.objetos.push(copia);
+        const despues = saludPiso(sl);
+        if (despues.regiones > antes.regiones || despues.aislados > antes.aislados) { sl.objetos.pop(); return; }
+      } else {
+        sl.objetos.push(copia);
+      }
+      ocupadas.add(o.x + "," + o.y);
+      if (o.tipo === "escritorio" && o.agenteId) conEscritorio.add(o.agenteId);
+      n++;
+    });
+    if (n) resumen.push(`${n} mueble${n === 1 ? "" : "s"} en ${sl.nombre}`);
+  });
+  if (ofrecidos) {
+    // Igual que con las salas: registro y boceto se escriben JUNTOS, o ninguno.
+    try {
+      localStorage.setItem(CLAVE_LOCAL, JSON.stringify(disenoSerializable(diseno)));
+      localStorage.setItem(CLAVE_OBJETOS_INYECTADOS, JSON.stringify([...ya]));
+    } catch (e) { /* sin storage */ }
+  }
+  return resumen;
+}
+
 // Las salas automáticas no guardan sus muebles: se regeneran de los datos. Sin
 // esto, el localStorage (y el layout.json exportado) se llenarían de pizarrones
 // congelados con los montos del día que se exportó.
@@ -2236,16 +2328,16 @@ function dominioDe(url) {
   try { return url ? new URL(url).hostname : ""; } catch (e) { return ""; }
 }
 
-let salasSumadas = [];
+let sumadasDelOficial = []; // salas y muebles que entraron del oficial en esta carga
 
 function actualizarPie() {
   const base = layoutEsLocal
     ? "estás viendo tu boceto local (guardado sólo en este navegador)"
     : "vista oficial (layout.json)";
-  // Si aparecieron salas que no estaban, se dice: una pestaña nueva sin
-  // explicación es exactamente lo que hace dudar de si algo se borró.
-  document.getElementById("pie-estado").textContent = salasSumadas.length
-    ? `${base} · se agregaron del oficial: ${salasSumadas.join(", ")}`
+  // Si aparecieron salas o muebles que no estaban, se dice: una pestaña o un
+  // tabique nuevo sin explicación es exactamente lo que hace dudar de si algo se borró.
+  document.getElementById("pie-estado").textContent = sumadasDelOficial.length
+    ? `${base} · se agregaron del oficial: ${sumadasDelOficial.join(", ")}`
     : base;
 }
 
@@ -2520,6 +2612,13 @@ document.getElementById("btn-exportar").addEventListener("click", () => {
 document.getElementById("btn-resetear").addEventListener("click", async () => {
   if (!confirm("Esto descarta tu boceto local y vuelve al layout.json oficial. ¿Seguir?")) return;
   localStorage.removeItem(CLAVE_LOCAL);
+  // Volver al oficial es arrancar de cero: lo que el oficial sume de acá en
+  // adelante tiene que ofrecerse otra vez, aunque ya se haya ofrecido a un
+  // boceto que acaba de morir.
+  localStorage.removeItem(CLAVE_INYECTADAS);
+  localStorage.removeItem(CLAVE_PAYROLL);
+  localStorage.removeItem(CLAVE_OBJETOS_INYECTADOS);
+  sumadasDelOficial = [];
   layoutEsLocal = false;
   DISENO = await cargarLayoutOficial();
   actualizarPie();
@@ -2951,7 +3050,7 @@ async function iniciar() {
   if (local) {
     DISENO = local;
     layoutEsLocal = true;
-    salasSumadas = asegurarSalasOficiales(DISENO, oficial);
+    sumadasDelOficial = asegurarSalasOficiales(DISENO, oficial).concat(asegurarMueblesOficiales(DISENO, oficial));
   } else {
     DISENO = oficial || layoutPorDefecto();
     layoutEsLocal = false;

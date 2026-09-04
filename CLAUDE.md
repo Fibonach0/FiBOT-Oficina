@@ -284,6 +284,37 @@ Probado con Playwright (`scratchpad/test-salas.mjs` de la sesión, no está en e
 repo): boceto viejo con sala propia, segunda carga, sala borrada a mano,
 navegador limpio, `layout.json` caído y el navegador con el flag viejo.
 
+### Y muebles nuevos en una sala vieja (sep 2026)
+
+Lo de arriba suma **salas** enteras; un mueble agregado al oficial *dentro* de
+una sala que el boceto ya tenía no llegaba nunca. Tampoco hipotético: los
+tabiques de los cubículos (PR #17) se sumaron a Principal y en el navegador de
+Nacho no aparecieron. `asegurarMueblesOficiales(diseno, oficial)` cierra ese
+hueco con las mismas reglas: al cargar un boceto local ofrece **una vez cada
+mueble del oficial que el boceto no tenga** (por `id`), y el registro
+(`fibot-oficina-objetos-inyectados`, claves `sala/idMueble`) recuerda cuáles ya
+ofreció, así borrar un tabique a propósito no lo revive.
+
+**El boceto siempre gana.** Un mueble del oficial no entra —pero queda anotado
+como ofrecido— si su celda ya la usa algo del boceto, si cae fuera de la grilla
+local, si es un escritorio de un agente que ya tiene el suyo con otro id, o si
+**empeora el piso**: `saludPiso()` cuenta regiones libres conectadas y
+escritorios sin vecino transitable (el mismo criterio del chequeo de
+`layout.json`), y un tabique que parta el piso o encierre a un muñeco en su
+cubículo se descarta. Registro y boceto se escriben juntos, igual que con las
+salas. El pie dice qué entró ("9 muebles en Principal").
+
+**Restablecer al oficial** ahora también borra los dos registros: volver al
+oficial es arrancar de cero, y lo que el oficial sume después tiene que
+ofrecerse otra vez.
+
+Probado con Playwright sobre https en un origen que no es localhost
+(`test-muebles.mjs` de la sesión, no está en el repo): boceto de antes de los
+cubículos recibe los 9 muebles de Principal (y los de Cantarini y LODTE),
+segunda carga no repite, tabique borrado no vuelve, celda ocupada gana,
+`layout.json` caído no inyecta ni registra, navegador limpio, tabique que
+encierra un escritorio se descarta, y el reset limpia todo.
+
 ## Vista isométrica — se diseña en 2D y se mira en 3D (sep 2026)
 
 Nacho pidió que la oficina fuera "estilo los Sims": avatares con su
@@ -699,22 +730,29 @@ apariencia, y la puerta con login de Supabase.
    decide es cómo se ve **en la tele de la pared** — el isométrico SVG que hoy
    está en producción se lee perfecto ahí, y el 3D todavía no se probó. Hasta
    que esa prueba exista, lo que está en producción es lo bueno.
-2. **Los cubículos nuevos no se ven en el navegador de Nacho.** Se agregaron
-   tabiques al `layout.json` oficial, pero **un boceto local le gana al
-   oficial** y `asegurarSalasOficiales()` inyecta *salas* faltantes, no muebles
-   dentro de una sala que ya existe. Para verlos: agregar los Divisores a mano
-   en Modo diseño, o "Restablecer al oficial" (que borra el boceto local).
-3. **`OFICINA_API` sin setear.** Hasta que apunte al bot, la oficina lee
-   `estado.json` (muestra estática), Payroll muestra el pizarrón que lo explica
-   y el botón Enviar queda deshabilitado.
-4. **La rama por defecto en GitHub es `init`, y está mal.** `init` es el commit
-   inicial del repo y quedó marcado como default; **el tronco real es `main`**,
-   que es donde vive todo lo de arriba. Consecuencias mientras no se corrija:
-   un PR abierto sin elegir base apunta a `init` y se compara contra la primera
-   versión del sitio, y una sesión nueva que clone el repo sin especificar rama
-   se lleva esa versión vieja. Pasarla a `main` es un pendiente de Nacho
-   (Settings → Branches), y también lo pide el workflow de despacho de Claude
-   Code.
+2. **Los cubículos nuevos no se veían en el navegador de Nacho — resuelto.**
+   Un boceto local le gana al oficial y hasta ahora sólo se inyectaban *salas*
+   faltantes, no muebles dentro de una sala que ya existía. Ahora
+   `asegurarMueblesOficiales()` los ofrece una vez cada uno (ver "Y muebles
+   nuevos en una sala vieja"). Falta que Nacho recargue y confirme que los ve.
+3. **`OFICINA_API` está seteada y el bot responde.** Apunta al Railway de
+   Personal-FiBOT desde el PR #9 (1/9). Verificado el 4/9 en las métricas HTTP
+   de Railway: `/oficina/estado` respondió 2xx las 402 veces de los últimos 7
+   días, cero 5xx (un 503 sería el módulo apagado por falta de
+   `OFICINA_SUPABASE_URL` / `OFICINA_SUPABASE_ANON_KEY` / `OFICINA_OWNER_EMAIL`).
+   Si en el navegador se ve el pizarrón "sin conexión" de Payroll o el botón
+   Enviar deshabilitado, el problema es la sesión de la puerta (403), no la
+   configuración. Una versión anterior de esta sección decía "sin setear": era
+   documentación vieja, no un frente.
+4. **La rama por defecto en GitHub es `init`, a propósito por ahora.** `init`
+   es el commit inicial y **el tronco real es `main`**. Decisión de Nacho (4/9):
+   queda así hasta que el sitio esté aprobado; mientras tanto `main` funciona
+   como UAT. Consecuencias que hay que tener en cuenta en cada sesión: un PR
+   abierto sin elegir base apunta a `init` (elegir **`main`** siempre), y una
+   sesión nueva que clone sin especificar rama se lleva la primera versión del
+   sitio (hacer `git fetch origin main && git checkout main` antes de leer
+   nada). El workflow de despacho de Claude Code también clona `init` mientras
+   siga así.
 
 ### La otra mitad vive en Personal-FiBOT
 
