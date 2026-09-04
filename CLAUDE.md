@@ -368,6 +368,12 @@ y salvo en una sala automática.
 - **Las etiquetas van en su propia capa** (`.iso-nombres`, z-index 9000).
   Arreglar lo anterior tapa los nombres detrás de los tabiques, que es correcto
   para el cuerpo y absurdo para el cartelito.
+- **El tablero es su propio contexto de apilado** (`isolation: isolate` en
+  `.tablero`). Sin eso, los 9000 de las etiquetas y los 500+ de los carteles se
+  comparaban contra el panel de detalle (z-index 30) y la puerta (50), que viven
+  afuera: al abrir el panel de un agente, los carteles y el cuadro quedaban
+  dibujados encima del modal. Con el aislamiento esos números sólo compiten
+  entre sí, y el modal y la puerta tapan el tablero entero como corresponde.
 - **El contenedor y la pieza de adentro no pueden compartir clase.** El
   contenedor era `iso-cartel` igual que el cartel que lleva adentro, así que el
   CSS del cartel le pintaba al contenedor un segundo tablero vacío detrás de
