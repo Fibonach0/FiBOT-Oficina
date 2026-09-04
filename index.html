@@ -272,15 +272,40 @@
   .iso-obj-escritorio:hover .iso-cabeza { transform: translateY(-3px); }
   .iso-nombres { position: absolute; inset: 0; z-index: 9000; pointer-events: none; }
   .iso-et { position: absolute; width: 0; height: 0; }
-  .iso-et > b, .iso-et > span {
-    position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap;
-    font-size: .66rem; font-weight: 800; letter-spacing: .01em; color: #fbf6ea;
-    background: rgba(38,28,18,.72); padding: 2px 7px; border-radius: 6px;
+  .iso-et .placa {
+    /* Corrida a la derecha a propósito: en esta proyección el cubículo que
+       tapa siempre queda abajo a la IZQUIERDA, así que la placa se aparta de
+       la cabeza del vecino sin tener que achicarse más. */
+    position: absolute; left: calc(50% + 16px); top: 14px; transform: translateX(-50%);
+    width: 118px; padding: 3px 7px 4px; border-radius: 7px; text-align: center;
+    background: rgba(34,25,16,.76); color: #fbf6ea; backdrop-filter: blur(1px);
   }
-  .iso-et > b { top: 14px; }
-  .iso-et .iso-tazas { top: 36px; background: rgba(38,28,18,.5); padding: 1px 6px; }
-  .iso-et .iso-pregunta { top: -104px; background: var(--accent, #c1652f); color: #fff; font-size: .68rem; }
-  .iso-et.preguntando > b { background: rgba(120,54,10,.85); }
+  .iso-et.preguntando .placa { background: rgba(122,54,10,.86); }
+  .pl-nombre { font-size: .62rem; font-weight: 800; line-height: 1.18; display: flex;
+    align-items: center; justify-content: center; gap: 4px; }
+  .pl-punto { width: 7px; height: 7px; border-radius: 50%; background: var(--e); flex: 0 0 7px; }
+  .pl-trofeo { font-size: .6rem; }
+  /* Dos líneas y corta: una tarea larga no puede empujar la placa del vecino. */
+  .pl-tarea { margin-top: 1px; font-size: .58rem; font-weight: 600; line-height: 1.22;
+    color: #e5dcca; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; }
+  .pl-vacio { color: #a89c86; font-style: italic; font-weight: 500; }
+  .pl-pie { display: flex; align-items: center; justify-content: center; gap: 5px;
+    margin-top: 2px; font-size: .52rem; color: #b8ac95; }
+  .pl-pie .avatar, .pl-pie svg { width: 9px; height: 9px; }
+  .iso-et.preguntando .pl-tarea { color: #ffe8cf; }
+  .iso-et.preguntando .pl-pie { color: #e8c6a4; }
+
+  /* El que camina se ve igual que el que está sentado: misma cabeza redonda
+     con su fondo claro, y un cuerpo dibujado de frente en vez de en planta. */
+  .tablero.iso .peep { width: 52px; }
+  .tablero.iso .peep .iso-cabeza { width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+    background: #f3eee4; border: 2px solid rgba(0,0,0,.16); box-shadow: 0 3px 6px rgba(0,0,0,.26);
+    margin-bottom: -9px; position: relative; z-index: 1; }
+  .tablero.iso .peep .iso-cabeza .avatar { width: 172%; height: 172%; margin: -36% 0 0 -36%; display: block; }
+  .peep-cuerpo.peep-iso { width: 44px; height: 48px; }
+  .tablero.iso .peep.mirando-izq .iso-cabeza, .tablero.iso .peep.mirando-izq .peep-cuerpo { transform: scaleX(-1); }
+  .tablero.iso .peep .peep-mano { top: 46px; right: 0; }
 
   .iso-obj-escritorio .iso-cabeza { position: absolute; left: -25px; top: -84px; width: 50px; height: 50px;
     border-radius: 50%; overflow: hidden; background: #f3eee4; border: 2px solid rgba(0,0,0,.16);
@@ -1770,6 +1795,16 @@ function isoPiso() {
   return s;
 }
 
+// Una taza por tarea del mes, apoyadas en la tapa del escritorio. Antes iban en
+// la placa y quedaban flotando en el aire.
+function isoTazas(o, A, n) {
+  let s = "";
+  for (let i = 0; i < Math.min(n || 0, 6); i++) {
+    s += isoCajaC(o.x, o.y, .075, .075, A(.05), "#faf6ef", A(.24), -.33 + i * .115, -.1);
+  }
+  return s;
+}
+
 // Los muebles se dibujan con alturas relativas a la celda: así una sala con
 // celdas de 140 y otra de 100 se ven proporcionadas igual.
 const ISO_DIBUJO = {
@@ -1822,6 +1857,7 @@ const ISO_DIBUJO = {
     return isoCajaC(o.x, o.y, 1, .5, A(.24), "#b58255", 0, 0, -.2)
       + isoCajaC(o.x, o.y, .34, .06, A(.24), "#39414d", A(.24), .16, -.3)
       + isoCajaC(o.x, o.y, .2, .14, A(.02), "#2c333d", A(.24), .16, -.24)
+      + isoTazas(o, A, ctx.tazas)
       + isoCajaC(o.x, o.y, .46, .46, A(.13), col, 0, 0, .3)
       + isoCajaC(o.x, o.y, .46, .1, A(.28), isoTono(col, .84), A(.13), 0, .52);
   },
@@ -1852,7 +1888,7 @@ function isoRender() {
   LAYOUT.objetos.forEach((o) => {
     const dib = ISO_DIBUJO[o.tipo] || ISO_DIBUJO._deco;
     const agente = o.agenteId ? AGENTES.find((a) => a.id === o.agenteId) : null;
-    poner(o.x + o.y, dib(o, A, { color: agente && agente.color }));
+    poner(o.x + o.y, dib(o, A, { color: agente && agente.color, tazas: agente ? tazasDe(agente.id) : 0 }));
   });
 
   const partes = [...bandas.keys()].sort((a, b) => a - b).map((k) =>
@@ -1883,7 +1919,7 @@ function isoRecuadro(obj) {
   let dentro = "";
   if (obj.tipo === "escritorio") {
     const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
-    if (!agente || vidaEstaFuera(agente.id)) return null; // salió: la silla queda vacía
+    if (!agente) return null;
     const vivo = estadoVivoDe(agente.id);
     const tecleando = vivo && vivo.estado === "en_curso" ? `<div class="iso-teclea"><i></i><i></i><i></i></div>` : "";
     dentro = `<div class="iso-cabeza">${avatarParaAgente(agente)}</div><div class="iso-torso" style="--c:${agente.color || "#7a6f60"}"></div>${tecleando}`;
@@ -1910,7 +1946,11 @@ function isoRecuadro(obj) {
     return null;
   }
   const el = document.createElement("div");
-  el.className = "iso-obj iso-obj-" + obj.tipo; // prefijo propio: si compartiera
+  el.className = "iso-obj iso-obj-" + obj.tipo;
+  // Si salió a dar una vuelta, el que camina es el de la capa de vida y este
+  // puesto queda vacío. Se esconde en vez de no existir, así `mostrarSentado`
+  // lo puede volver a mostrar sin rehacer el render entero.
+  if (obj.tipo === "escritorio" && vidaEstaFuera(obj.agenteId)) el.style.display = "none"; // prefijo propio: si compartiera
   // nombre con la pieza de adentro (`iso-cartel`), el CSS de esa pieza le
   // pintaría un duplicado vacío al contenedor.
   el.dataset.id = obj.id;
@@ -1922,32 +1962,53 @@ function isoRecuadro(obj) {
   return el;
 }
 
+// La placa del cubículo: quién es, en qué anda y hace cuánto lo dijo. Va en la
+// capa de nombres (por encima de todo) porque un tabique tapando el cuerpo de
+// alguien es correcto, y tapándole el cartel con la tarea es absurdo.
+//
+// El estado se lee por el color del punto, no por una palabra más: en una
+// pantalla de pared el texto de estado no se alcanza a leer y el color sí.
+const ISO_PUNTO = {
+  en_curso: "#2f8f68", esperando_dueno: "#c1652f", pendiente: "#b5a88f",
+  hecha: "#5f8f78", inactivo: "#8d8377", activo: "#2f8f68", pausa: "#b5a88f", bloqueado: "#c1652f",
+};
+
 function isoEtiqueta(obj) {
-  let texto = "", extra = "", clase = "";
-  if (obj.tipo === "escritorio") {
-    const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
-    if (!agente) return null;
-    texto = agente.nombre;
-    if (esAgenteDelMes(agente.id)) texto += " 🏆";
-    const vivo = estadoVivoDe(agente.id);
-    const tazas = tazasDe(agente.id);
-    if (tazas) extra += `<span class="iso-tazas" title="${tazas} tarea${tazas === 1 ? "" : "s"} este mes">${tazasHTML(tazas)}</span>`;
-    if (vivo && vivo.estado === "esperando_dueno") {
-      clase = " preguntando";
-      extra += `<span class="iso-pregunta" title="${escaparHTML(vivo.pregunta || "")}">te pregunta algo</span>`;
-    }
-  } else if (obj.tipo === "isla") {
+  const el = document.createElement("div");
+  isoUbicar(el, obj.x, obj.tipo === "escritorio" ? obj.y + .3 : obj.y);
+  // Las placas se pisan entre cubículos vecinos, así que la de adelante gana.
+  el.style.zIndex = Math.round((obj.x + obj.y) * 10);
+
+  if (obj.tipo === "isla") {
     const nombres = (obj.asientos || []).filter(Boolean)
       .map((id) => (AGENTES.find((a) => a.id === id) || {}).nombre).filter(Boolean);
     if (!nombres.length) return null;
-    texto = nombres.join(" · ");
-  } else {
-    return null;
+    el.className = "iso-et";
+    el.innerHTML = `<div class="placa"><div class="pl-nombre">${escaparHTML(nombres.join(" · "))}</div></div>`;
+    return el;
   }
-  const el = document.createElement("div");
-  el.className = "iso-et" + clase;
-  el.innerHTML = `<b>${escaparHTML(texto)}</b>${extra}`;
-  isoUbicar(el, obj.x, obj.tipo === "escritorio" ? obj.y + .3 : obj.y);
+  if (obj.tipo !== "escritorio") return null;
+  const agente = obj.agenteId ? AGENTES.find((a) => a.id === obj.agenteId) : null;
+  if (!agente) return null;
+
+  const vivo = estadoVivoDe(agente.id);
+  const estado = vivo ? vivo.estado : agente.estado;
+  const espera = vivo && vivo.estado === "esperando_dueno";
+  // Si te está esperando, lo que importa es la pregunta, no la tarea. Cuando
+  // nunca reportó queda la `nota` a mano de agents.json, que es el fallback.
+  const linea = espera ? (vivo.pregunta || vivo.tarea || "") : ((vivo && vivo.tarea) || agente.nota || "");
+  const cuando = vivo && vivo.actualizado ? tiempoRelativo(vivo.actualizado) : "";
+  const tazas = tazasDe(agente.id); // se dibujan sobre el escritorio, no acá
+  const titulo = [vivo && vivo.tarea, vivo && vivo.detalle, cuando && "reportado " + cuando,
+    tazas && `${tazas} tarea${tazas === 1 ? "" : "s"} este mes`]
+    .filter(Boolean).join(" — ") || agente.rol || agente.nombre;
+
+  el.className = "iso-et" + (espera ? " preguntando" : "");
+  el.innerHTML = `<div class="placa" title="${escaparHTML(titulo)}">
+      <div class="pl-nombre"><i class="pl-punto" style="--e:${ISO_PUNTO[estado] || "#8d8377"}"></i>${escaparHTML(agente.nombre)}${esAgenteDelMes(agente.id) ? ' <span class="pl-trofeo">🏆</span>' : ""}</div>
+      ${linea ? `<div class="pl-tarea${vivo && vivo.tarea ? "" : " pl-vacio"}">${escaparHTML(linea)}</div>` : `<div class="pl-tarea pl-vacio">sin novedad</div>`}
+      ${cuando ? `<div class="pl-pie"><span>${escaparHTML(cuando)}</span></div>` : ""}
+    </div>`;
   return el;
 }
 
@@ -2643,6 +2704,23 @@ function cuerpoSVG(color) {
   </svg>`;
 }
 
+// El cuerpo de arriba es una figura vista en planta; en isométrico se la ve de
+// frente y quedaba raro. Este conserva las clases .pierna-i/.pierna-d para que
+// la animación de caminata siga siendo exactamente la misma.
+function cuerpoIsoSVG(color) {
+  return `<svg class="peep-cuerpo peep-iso" viewBox="0 0 44 48" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="22" cy="45.5" rx="12" ry="3" fill="rgba(0,0,0,.16)"/>
+    <rect class="pierna pierna-i" x="15" y="25" width="6" height="15" rx="3" fill="#3a3a44"/>
+    <rect class="pierna pierna-d" x="23" y="25" width="6" height="15" rx="3" fill="#3a3a44"/>
+    <rect x="12.5" y="38" width="9" height="4.5" rx="2.2" fill="#2b2b33"/>
+    <rect x="22.5" y="38" width="9" height="4.5" rx="2.2" fill="#2b2b33"/>
+    <rect x="11" y="1" width="22" height="28" rx="9.5" fill="${color}"/>
+    <rect x="11" y="20" width="22" height="9" rx="4.5" fill="rgba(0,0,0,.13)"/>
+    <rect x="6" y="6" width="5.5" height="17" rx="2.7" fill="${color}"/>
+    <rect x="32.5" y="6" width="5.5" height="17" rx="2.7" fill="${color}"/>
+  </svg>`;
+}
+
 function libre(x, y, ocupado) {
   const { cols, rows } = LAYOUT.grid;
   return x >= 0 && y >= 0 && x < cols && y < rows && !ocupado.has(x + "," + y);
@@ -2698,7 +2776,11 @@ function montarVida() {
     if (p.modo === "sentado") { p.x = desk.x; p.y = desk.y; }
     const el = document.createElement("div");
     el.className = "peep";
-    el.innerHTML = `<div class="peep-burbuja"></div>${avatarParaAgente(agente)}${cuerpoSVG(agente.color)}<span class="peep-mano"></span>`;
+    const iso = isoActivo();
+    if (iso) el.classList.add("iso");
+    el.innerHTML = iso
+      ? `<div class="peep-burbuja"></div><div class="iso-cabeza">${avatarParaAgente(agente)}</div>${cuerpoIsoSVG(agente.color)}<span class="peep-mano"></span>`
+      : `<div class="peep-burbuja"></div>${avatarParaAgente(agente)}${cuerpoSVG(agente.color)}<span class="peep-mano"></span>`;
     el.style.display = p.modo === "sentado" ? "none" : "";
     if (p.modo === "yendo" || p.modo === "volviendo") el.classList.add("caminando");
     if (p.modo === "volviendo" && p.motivo === "cafe-doble") { el.classList.add("llevando"); el.querySelector(".peep-mano").textContent = "☕☕"; }
@@ -2757,13 +2839,22 @@ function elegirActividad(p, ocupado) {
   }
   return null;
 }
+// El avatar sentado vive en un DOM distinto según la vista: en el plano es el
+// `.avatar-wrap` del objeto, en isométrico es el puesto entero. Buscar sólo el
+// primero dejaba al que se levantaba TAMBIÉN sentado en su silla.
+function mostrarSentado(p, sentado) {
+  if (!p.desk) return;
+  const iso = tablero.querySelector(`.iso-obj-escritorio[data-id="${p.desk.id}"]`);
+  if (iso) { iso.style.display = sentado ? "" : "none"; return; }
+  const av = tablero.querySelector(`.objeto[data-id="${p.desk.id}"] .avatar-wrap`);
+  if (av) av.innerHTML = sentado ? avatarParaAgente(p.agente) : sillaVaciaSVG();
+}
+
 function salirPeep(p, act, motivo) {
   p.modo = "yendo"; p.act = act; p.ruta = act.ruta.slice(1); p.motivo = motivo;
   p.el.style.display = "";
   p.el.classList.add("caminando");
-  // la silla queda vacía mientras está afuera
-  const av = tablero.querySelector(`.objeto[data-id="${p.desk.id}"] .avatar-wrap`);
-  if (av) av.innerHTML = sillaVaciaSVG();
+  mostrarSentado(p, false); // la silla queda vacía mientras está afuera
 }
 function volverPeep(p) {
   const ocupado = mapaOcupado();
@@ -2776,8 +2867,7 @@ function sentarPeep(p) {
   p.modo = "sentado"; p.x = p.desk.x; p.y = p.desk.y; p.ruta = [];
   p.el.classList.remove("caminando", "llevando", "mirando-izq");
   p.el.style.display = "none";
-  const av = tablero.querySelector(`.objeto[data-id="${p.desk.id}"] .avatar-wrap`);
-  if (av) av.innerHTML = avatarParaAgente(p.agente);
+  mostrarSentado(p, true);
   p.siguienteSalida = performance.now() + (VIDA_RAPIDO ? azar(1000, 3000) : azar(20000, 90000));
 }
 function tickVida(ts) {
