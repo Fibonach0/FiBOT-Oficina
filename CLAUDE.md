@@ -725,78 +725,16 @@ esconde exactamente esta clase de bug. En GitHub Pages, una vez emitido el
 certificado, activar **Enforce HTTPS** en Settings → Pages para que `http`
 redirija solo.
 
-## Empezá acá — estado y frentes abiertos (4/9/2026)
-
-Esta sección es la foto del momento, para que una sesión dedicada a la oficina
-arranque sabiendo qué está hecho, qué está a medias y qué depende de Nacho.
-Todo lo técnico está más arriba; acá va sólo el estado.
-
-### Andando en producción
-
-Salas con pestañas, modo diseño completo (muebles, pinceles de muro, puertas,
-islas, goma, rotar, agrandar/achicar), **vista isométrica** con cubículos y
-placa de tarea por puesto, vida en la oficina (los muñecos caminan, se sientan,
-van a la cocina, juntan tazas), sala **Payroll** automática, modo TV, editor de
-apariencia, y la puerta con login de Supabase.
-
-### Frentes abiertos
-
-1. **3D real vs. isométrico SVG — la prueba ya se puede hacer.** En
-   `proto/3d/` hay un prototipo Three.js con cabezas 3D, caras impresas sobre
-   un casquete esférico, brazos y luz IBL. Es **una maqueta, no la oficina**:
-   no tiene modo diseño ni puerta (lee el estado vivo, pero no tiene vida ni
-   BFS: los que caminan siguen un recorrido fijo). Desde sep 2026 está
-   publicado en **`oficina.fibot.ar/proto/3d/?tv=1`** con medidor de fps: lo
-   que falta es que Nacho lo abra en el navegador de la tele y lea el número
-   (umbrales en el README del prototipo). Si pasa, el siguiente paso es la
-   integración: reemplazar `isoRender()` y enganchar la vida real. Si no pasa,
-   el isométrico SVG se queda y esto sigue siendo una pieza aparte.
-2. **Los cubículos nuevos no se veían en el navegador de Nacho — resuelto.**
-   Un boceto local le gana al oficial y hasta ahora sólo se inyectaban *salas*
-   faltantes, no muebles dentro de una sala que ya existía. Ahora
-   `asegurarMueblesOficiales()` los ofrece una vez cada uno (ver "Y muebles
-   nuevos en una sala vieja"). Falta que Nacho recargue y confirme que los ve.
-3. **`OFICINA_API` está seteada y el bot responde.** Apunta al Railway de
-   Personal-FiBOT desde el PR #9 (1/9). Verificado el 4/9 en las métricas HTTP
-   de Railway: `/oficina/estado` respondió 2xx las 402 veces de los últimos 7
-   días, cero 5xx (un 503 sería el módulo apagado por falta de
-   `OFICINA_SUPABASE_URL` / `OFICINA_SUPABASE_ANON_KEY` / `OFICINA_OWNER_EMAIL`).
-   Si en el navegador se ve el pizarrón "sin conexión" de Payroll o el botón
-   Enviar deshabilitado, el problema es la sesión de la puerta (403), no la
-   configuración. Una versión anterior de esta sección decía "sin setear": era
-   documentación vieja, no un frente.
-4. **La rama por defecto en GitHub es `init`, a propósito por ahora.** `init`
-   es el commit inicial y **el tronco real es `main`**. Decisión de Nacho (4/9):
-   queda así hasta que el sitio esté aprobado; mientras tanto `main` funciona
-   como UAT. Consecuencias que hay que tener en cuenta en cada sesión: un PR
-   abierto sin elegir base apunta a `init` (elegir **`main`** siempre), y una
-   sesión nueva que clone sin especificar rama se lleva la primera versión del
-   sitio (hacer `git fetch origin main && git checkout main` antes de leer
-   nada). El workflow de despacho de Claude Code también clona `init` mientras
-   siga así.
-
-### La otra mitad vive en Personal-FiBOT
-
-Este repo **sólo dibuja**. Los datos salen de `GET /oficina/estado` y
-`GET /oficina/costos`, los pedidos entran por `POST /oficina/pedir` y los
-agentes reportan por `POST /oficina/reportar` — todo en `index.ts` de
-**`Fibonach0/Personal-FiBOT`**, contra la tabla `oficina_tareas`. Tocar el
-contrato es tocar los dos repos en el mismo laburo.
-
-Dos cosas de allá que muerden acá:
-
-- **Los ids de `agents.json` tienen que coincidir** con los de
-  `OFICINA_AGENTES_DEFAULT` en Personal-FiBOT. Si se renombra un agente acá y
-  no allá, las tareas delegadas no encuentran su escritorio.
-- La prospección, que es el agente más activo del panel, tiene su propio manual
-  en `PROSPECCION.md` de ese repo. No hace falta leerlo para trabajar acá.
-
 ## Convenciones
 
 - **Nunca commitear directo a `main`**: rama + PR. Ojo al abrir el PR: la base
   tiene que ser **`main`**, no el `init` que GitHub ofrece por defecto.
 - Sitio estático: sin build, sin dependencias, se edita y se pushea.
 - Cero credenciales acá — este repo es público y sirve una página pública.
+- **Este repo es público: el estado interno NO va acá.** En qué está a medias
+  cada frente, qué falta configurar y qué depende de Nacho vive en
+  `OFICINA-ESTADO.md` del repo **privado** `Fibonach0/Personal-FiBOT`, que es
+  donde además está la otra mitad del sistema (los endpoints `/oficina/*`).
 - Al tocar `layout.json`, volver a correr el BFS: **una sola región conectada**
   y **ningún escritorio sin vecino transitable**. Tres intentos de este layout
   partieron el piso en dos y lo agarró el chequeo, no la pantalla.
