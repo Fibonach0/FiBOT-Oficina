@@ -22,7 +22,8 @@ completa está en `three/LICENSE`. `three/jsm/` son tres módulos de
 `examples/jsm/` del mismo paquete y la misma versión (OrbitControls,
 RoundedBoxGeometry, RoomEnvironment), copiados tal cual.
 
-Lo usa **sólo el prototipo 3D** (`proto/3d/`). La oficina de producción no lo
-carga. Para actualizarlo: `npm i three@<versión>` y copiar
+Lo usan la **vista 3D de la oficina** (`oficina3d.js`, cargado con `import()`
+sólo cuando esa vista está activa) y el prototipo (`proto/3d/`). La vista
+isométrica y el modo diseño no lo cargan. Para actualizarlo: `npm i three@<versión>` y copiar
 `node_modules/three/build/three.module.min.js`, `LICENSE` y los tres módulos
 de `examples/jsm/`.
