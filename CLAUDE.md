@@ -104,6 +104,7 @@ quedar como fallback si la API no responde, o borrarse.
 
 ```
 index.html     la oficina entera: HTML + CSS + JS vanilla, sin build ni framework
+oficina3d.js   la vista 3D (three.js): sólo dibuja; se carga con import() cuando hace falta
 agents.json    el roster — nombre, rol, color, estado, nota, link, repo (opcional)
 layout.json    el diseño "oficial" — salas, cada una con su grilla y sus muebles
 avatares.json  los avatares Open Peeps (CC0) pre-generados, uno por agente
@@ -336,8 +337,8 @@ celda tocaste, ordenar el hit-testing por altura, rehacer el arrastre. Nada de
 eso hizo falta. `layout.json` tampoco cambia de forma: misma grilla, mismas
 celdas, mismos objetos.
 
-`isoActivo()` es el criterio, en un solo lugar: isométrico salvo en Modo diseño
-y salvo en una sala automática.
+`isoActivo()` es el criterio, en un solo lugar: proyectado (isométrico o 3D,
+ver "Vista 3D") salvo en Modo diseño y salvo en una sala automática.
 
 ### Cómo está armado
 
@@ -437,12 +438,72 @@ región conectada** y que **ningún escritorio queda sin vecino transitable**. L
 tres primeros intentos de este layout partieron el piso en dos y el chequeo los
 frenó antes de que llegaran al repo.
 
+## Vista 3D — la oficina en three.js, con la misma vida (sep 2026)
+
+Nacho pidió integrar el 3D del prototipo a la oficina. La costura de "se
+diseña en 2D y se mira en isométrico" hizo que fuera reemplazar **sólo el
+dibujo**: `render()` elige entre `render3D()` e `isoRender()` cuando
+`isoActivo()`, y todo lo demás (layout, salas, puerta, estado vivo, panel de
+detalle, Payroll en 2D, modo diseño en 2D, modo TV) es el mismo código.
+
+- **`oficina3d.js`** es un módulo ES que exporta `montarVista3D({ tablero,
+  api })`. `index.html` lo carga con `import()` sólo si la vista 3D está
+  activa (`fibot-oficina-vista` en `localStorage`, default `3d`); la
+  isométrica y el modo diseño siguen sin dependencias, y si el import falla o
+  no hay WebGL (`hayWebGL()`), la oficina cae a la isométrica y esconde el
+  botón. `three.js` está vendoreado en `vendor/three/` y hay un `importmap`
+  para que los módulos de `jsm/` resuelvan `"three"`. El botón **Vista
+  isométrica / Vista 3D** del header alterna y guarda la preferencia.
+- **Un solo simulador.** La vida sigue siendo `tickVida()` en `index.html`
+  (quién se levanta, adónde va por BFS, cuánto se queda, qué dice). El módulo
+  no decide nada: cada cuadro lee `VIDA.peeps` por `api.peeps()` y pone a cada
+  persona **exactamente** donde dice el simulador (`p.x`, `p.y` ya vienen
+  interpolados celda a celda). Se probó perseguir esa posición con un tope de
+  velocidad para suavizar, y cortaba las esquinas por adentro de los muebles
+  cuando el simulador iba más rápido que el tope; lo único que se agrega es el
+  corrimiento de la silla (+.3 hacia la cámara), que se desvanece al salir de
+  la celda del escritorio. La capa de vida HTML (`.capa-vida`) sigue
+  existiendo porque **es** el simulador, pero en 3D no se muestra.
+- **Las placas son las mismas** (`isoEtiqueta(obj)`, prestada por `api.etiqueta`)
+  proyectadas sobre la cabeza de cada uno, esté sentado o caminando, en una
+  capa `.iso-nombres.placas-3d`; se les suma `.pl-act` con lo que está
+  haciendo (la burbuja de la vida, o ☕☕ cuando vuelve con dos cafés).
+- **Misma convención de escritorio que el isométrico**: la silla del lado de
+  la cámara y el monitor detrás de la persona. La cabeza es un cartel que
+  siempre mira a la cámara, así que se le ve la cara igual. Y con eso la regla
+  nueva de la vida vale para las dos vistas: **del escritorio se sale por
+  adelante o por los costados, nunca atravesando el monitor** (`camino()`
+  acepta `primeros`, `salidasDe(desk)`), y la vuelta es la ida al revés.
+- **Clicks por raycast**: persona → `abrirPanel`, isla → `abrirPanelIsla`,
+  cartel → su link, cuadro → el panel del agente del mes. Un arrastre de más
+  de 6 px es cámara (OrbitControls), no click. Los carteles llevan el título
+  dibujado en una textura; el cuadro lleva la cara del agente del mes.
+- **`sincronizar()`** se llama después de cada `render()`: si cambió la firma
+  de la sala (id, grilla, objetos, colores y avatares de los agentes, agente
+  del mes) reconstruye la escena; si no, sólo rearma las placas. Al cambiar de
+  sala la cámara se reencuadra según la grilla.
+- **Modo TV**: el canvas llena el marco (sin el `transform: scale` de la
+  isométrica: `ajustarEscalaTV` y `dimensionarTablero3D` lo saben) y la
+  cámara gira sola. `?calidad=alta|media|baja` como en el prototipo.
+- Lo que costó en el prototipo (cabezas, colores, filas) está en
+  `proto/3d/README.md`. El prototipo queda como banco de pruebas aislado; la
+  oficina ya no lo necesita.
+
+Probado con Playwright (`test-oficina3d.mjs` de la sesión, no está en el
+repo): arranque en 3D con 10 personas y 10 placas, alternar a isométrica y
+volver, Cantarini en 3D y Payroll en 2D, modo diseño en 2D y vuelta al 3D,
+click en una persona abre su panel, la vida mueve gente en 3D sin pisar
+muebles, modo TV llena el marco con la cámara girando, y con preferencia
+isométrica no se pide ni `oficina3d.js` ni `three.js`. El panel de detalle
+queda por encima del canvas (el tablero es su propio contexto de apilado).
+
 ## Prototipo 3D — una maqueta, no la oficina (sep 2026)
 
 Nacho pasó [Bot Crossing](https://github.com/jarrenrocks/bot-crossing), que
 muestra sesiones de agentes como astronautas en una colonia 3D, y pidió ir en
-esa dirección. Vive en [`proto/3d/`](proto/3d/) con su propio README: **es una
-pieza aparte, no reemplaza nada todavía.**
+esa dirección. Vive en [`proto/3d/`](proto/3d/) con su propio README. Desde sep 2026 la
+oficina tiene su propia vista 3D (ver "Vista 3D"); el prototipo queda como
+banco de pruebas aislado y como registro de lo que costó.
 
 Lo importante para esta decisión: gracias a la costura de "se diseña en 2D y se
 mira en isométrico", adoptarlo sería **reemplazar sólo `isoRender()`**. El
@@ -584,7 +645,9 @@ Pedido de Nacho: que los agentes tengan cuerpo y anden por la oficina. Es
   planta (la riegan), sofá, pizarra, y el **cuadro** — al que sólo van los
   que NO son el agente del mes, a decir "el próximo es mío". Van por BFS
   en la grilla (`camino`), sin atravesar muebles ni muros; alfombra y
-  puerta son transitables. Los que están `en_curso` o `esperando_dueno`
+  puerta son transitables. **Del escritorio se sale por adelante o por los
+  costados** (la silla está adelante, el monitor atrás; `salidasDe`), y la
+  vuelta es la ida al revés. Los que están `en_curso` o `esperando_dueno`
   se quedan sentados (los `en_curso` con tres puntitos "tecleando").
 - **Tarea grande** (llega un estado nuevo con tarea distinta, `en_curso`,
   y con link de despacho o detalle largo): van a la cafetera, dicen "dos

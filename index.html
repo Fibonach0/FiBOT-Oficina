@@ -164,6 +164,18 @@
     isolation: isolate;
     background-image: repeating-linear-gradient(45deg, var(--floor-a) 0 24px, var(--floor-b) 24px 48px);
   }
+  /* -------- vista 3D (oficina3d.js) --------
+     El canvas llena el tablero; la capa de vida (los muñecos HTML) sigue
+     existiendo porque es el simulador, pero no se muestra: el 3D dibuja a la
+     misma gente en el mismo lugar. Las placas son las mismas .iso-et de la
+     vista isométrica, proyectadas sobre cada cabeza. */
+  .tablero.tres-d { background: #efe7d8; background-image: none; overflow: hidden; }
+  .tablero.tres-d canvas.lienzo-3d { position: absolute; inset: 0; display: block; touch-action: none; }
+  .tablero.tres-d .capa-vida { display: none; }
+  .tablero.tres-d .placas-3d { z-index: 9000; }
+  .tablero.tres-d .iso-et .placa { left: 50%; top: auto; bottom: 6px; transform: translateX(-50%); }
+  .tablero.tres-d .pl-act:empty { display: none; }
+  .tablero.tres-d .pl-act { margin-top: 2px; font-size: .62rem; font-weight: 700; color: #ffe8cf; }
   .tablero.modo-diseno {
     background-image:
       linear-gradient(rgba(110,68,41,.35) 1px, transparent 1px),
@@ -485,6 +497,7 @@
   <div class="tv-reloj" id="tv-reloj" style="display:none;"></div>
   <div class="barra-acciones">
     <button class="btn" id="btn-fibot">Pedirle a FiBOT</button>
+    <button class="btn secundario" id="btn-vista" title="Cambiar entre la oficina en 3D y la isométrica">Vista isométrica</button>
     <button class="btn secundario" id="btn-modo">Modo diseño</button>
     <button class="btn secundario" id="btn-exportar" style="display:none;">Descargar layout.json</button>
     <button class="btn peligro" id="btn-resetear" style="display:none;">Restablecer al oficial</button>
@@ -588,6 +601,7 @@
   </div>
 </div>
 
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js"}}</script>
 <script>
 // ---------- puerta: login con la cuenta de hub.fibot.ar (Supabase Auth), y entra UNA sola persona ----------
 // Sin librería: el login por clave de Supabase es una llamada REST. Mismo proyecto
@@ -1528,6 +1542,7 @@ let tvGiro = null;
 // capa de vida — posicionados dentro del tablero, no sobre la pantalla.
 function ajustarEscalaTV() {
   if (!TV) return;
+  if (V3D_ESTADO === "ok" && vista3DActiva() && isoActivo()) { dimensionarTablero3D(); return; }
   const env = document.querySelector(".tablero-envoltorio");
   if (!env) return;
   const w = LAYOUT.grid.cols * LAYOUT.grid.cell;
@@ -2109,6 +2124,71 @@ function isoEtiqueta(obj) {
   return el;
 }
 
+// ---------- vista 3D ----------
+// La oficina se puede mirar en 3D real (oficina3d.js, three.js) o en el
+// isométrico SVG de siempre. La preferencia vive en localStorage; el default
+// es 3D si el navegador tiene WebGL. El módulo se carga con import() sólo
+// cuando hace falta: la isométrica y el modo diseño siguen sin dependencias.
+// Reemplaza SÓLO el dibujo: la vida (tickVida) sigue siendo una, y el 3D lee
+// VIDA.peeps cada cuadro para poner a cada uno donde el simulador dice.
+const CLAVE_VISTA = "fibot-oficina-vista";
+let VISTA = (() => { try { return localStorage.getItem(CLAVE_VISTA) || "3d"; } catch (e) { return "3d"; } })();
+let V3D = null;              // instancia de oficina3d.js
+let V3D_ESTADO = "no";       // no | cargando | ok | fallo
+function vista3DActiva() { return VISTA === "3d" && V3D_ESTADO !== "fallo"; }
+function actualizarBotonVista() {
+  const b = document.getElementById("btn-vista");
+  b.textContent = VISTA === "3d" ? "Vista isométrica" : "Vista 3D";
+  b.style.display = V3D_ESTADO === "fallo" ? "none" : "";
+}
+async function cargar3D() {
+  V3D_ESTADO = "cargando";
+  try {
+    const mod = await import("./oficina3d.js");
+    if (!mod.hayWebGL()) throw new Error("sin WebGL");
+    const calidadParam = { alta: 0, media: 1, baja: 2 }[new URLSearchParams(location.search).get("calidad")];
+    V3D = mod.montarVista3D({ tablero, api: {
+      sala: () => LAYOUT, agentes: () => AGENTES, estado: () => ESTADO, peeps: () => VIDA.peeps,
+      avatar: (id) => { const a = AGENTES.find((x) => x.id === id); return a ? avatarParaAgente(a) : null; },
+      etiqueta: (obj) => isoEtiqueta(obj),
+      agenteDelMes: () => (ESTADO && ESTADO.agente_del_mes) || null,
+      onAgente: (a) => abrirPanel(a), onIsla: (o) => abrirPanelIsla(o),
+      onCartel: (o) => { if (o.url) window.open(o.url, "_blank", "noopener"); },
+      tv: TV, calidad: calidadParam, hora: new URLSearchParams(location.search).get("hora"),
+    } });
+    V3D_ESTADO = "ok";
+  } catch (e) {
+    console.warn("Vista 3D no disponible, queda la isométrica:", e);
+    V3D_ESTADO = "fallo";
+  }
+  actualizarBotonVista();
+  render();
+}
+function dimensionarTablero3D() {
+  const env = document.querySelector(".tablero-envoltorio");
+  const w = env.clientWidth;
+  const h = TV ? env.clientHeight : Math.round(Math.min(window.innerHeight * .78, Math.max(360, w * .6)));
+  tablero.style.width = w + "px";
+  tablero.style.height = h + "px";
+  tablero.style.transform = "none"; tablero.style.marginLeft = "0"; tablero.style.marginTop = "0";
+}
+function render3D() {
+  if (V3D_ESTADO === "no") cargar3D();
+  if (V3D_ESTADO !== "ok") { isoRender(); return; }   // mientras carga, la isométrica
+  ISO_T = isoMedidas();   // las placas (isoEtiqueta) se arman con estas medidas; acá se reproyectan igual
+  tablero.className = "tablero tres-d";
+  dimensionarTablero3D();
+  V3D.sincronizar();
+}
+window.addEventListener("resize", () => { if (V3D_ESTADO === "ok" && vista3DActiva() && isoActivo()) dimensionarTablero3D(); });
+document.getElementById("btn-vista").addEventListener("click", () => {
+  VISTA = VISTA === "3d" ? "iso" : "3d";
+  try { localStorage.setItem(CLAVE_VISTA, VISTA); } catch (e) { /* sin storage */ }
+  actualizarBotonVista();
+  render();
+});
+actualizarBotonVista();
+
 // ---------- render ----------
 
 const tablero = document.getElementById("tablero");
@@ -2122,7 +2202,7 @@ function render() {
   // automáticas (Payroll) son un tablero de datos, no una oficina: ahí no hay
   // nada que proyectar y los números tienen que leerse, así que quedan planas.
   if (isoActivo()) {
-    isoRender();
+    if (vista3DActiva()) render3D(); else isoRender();
   } else {
     const { cols, rows, cell } = LAYOUT.grid;
     tablero.style.width = cols * cell + "px";
@@ -2834,8 +2914,12 @@ function mapaOcupado() {
   LAYOUT.objetos.forEach((o) => { if (!CAMINABLE.has(o.tipo)) oc.add(o.x + "," + o.y); });
   return oc;
 }
-// BFS en la grilla, 4 vecinos. `desde` puede estar ocupado (es el escritorio propio).
-function camino(desde, hasta, ocupado) {
+// BFS en la grilla, 4 vecinos. `desde` puede estar ocupado (es el escritorio
+// propio). `primeros`, si viene, acota el primer paso: la silla está en el
+// borde de ADELANTE del escritorio (en isométrico y en 3D por igual) y el
+// monitor atrás, así que del escritorio se sale por adelante o por los
+// costados, nunca atravesando el monitor. La vuelta es la ida al revés.
+function camino(desde, hasta, ocupado, primeros) {
   const clave = (c) => c[0] + "," + c[1];
   const prev = new Map([[clave(desde), null]]);
   const cola = [desde];
@@ -2846,15 +2930,18 @@ function camino(desde, hasta, ocupado) {
       for (let cur = c; cur; cur = prev.get(clave(cur))) ruta.unshift(cur);
       return ruta;
     }
+    const esInicio = c === desde;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const n = [c[0] + dx, c[1] + dy];
       if (!libre(n[0], n[1], ocupado) || prev.has(clave(n))) continue;
+      if (esInicio && primeros && !primeros.has(clave(n))) continue;
       prev.set(clave(n), c);
       cola.push(n);
     }
   }
   return null;
 }
+const salidasDe = (desk) => new Set([[desk.x, desk.y + 1], [desk.x - 1, desk.y], [desk.x + 1, desk.y]].map((c) => c[0] + "," + c[1]));
 function celdaJuntoA(obj, ocupado) {
   const opciones = [[obj.x, obj.y + 1], [obj.x - 1, obj.y], [obj.x + 1, obj.y], [obj.x, obj.y - 1]].filter(([x, y]) => libre(x, y, ocupado));
   return opciones.length ? opciones[Math.floor(Math.random() * opciones.length)] : null;
@@ -2897,6 +2984,7 @@ function montarVida() {
   if (!VIDA.raf) VIDA.raf = requestAnimationFrame(tickVida);
 }
 function posicionarPeep(p) {
+  if (V3D_ESTADO === "ok" && vista3DActiva() && isoActivo()) return; // en 3D los dibuja oficina3d.js
   if (isoActivo() && ISO_T) {
     const [x, y] = isoXY(p.x, p.y);
     p.el.style.transform = `translate(${(x - 28).toFixed(1)}px, ${(y - ISO_T.cell * 0.62).toFixed(1)}px)`;
@@ -2920,7 +3008,7 @@ function irPorCafes(p) {
   const cafetera = LAYOUT.objetos.find((o) => o.tipo === "cafetera");
   if (!cafetera) return false;
   const celda = celdaJuntoA(cafetera, ocupado);
-  const ruta = celda && camino([p.desk.x, p.desk.y], celda, ocupado);
+  const ruta = celda && camino([p.desk.x, p.desk.y], celda, ocupado, salidasDe(p.desk));
   if (!(ruta && ruta.length > 1)) return false;
   salirPeep(p, { obj: cafetera, celda, ruta, icono: "☕☕", texto: "dos cafés" }, "cafe-doble");
   return true;
@@ -2935,7 +3023,7 @@ function elegirActividad(p, ocupado) {
     const obj = candidatos[Math.floor(Math.random() * candidatos.length)];
     const celda = celdaJuntoA(obj, ocupado);
     if (!celda) continue;
-    const ruta = camino([p.desk.x, p.desk.y], celda, ocupado);
+    const ruta = camino([p.desk.x, p.desk.y], celda, ocupado, salidasDe(p.desk));
     if (ruta && ruta.length > 1) {
       const opciones = ACTIVIDADES[obj.tipo];
       return { obj, celda, ruta, ...opciones[Math.floor(Math.random() * opciones.length)] };
@@ -2962,7 +3050,10 @@ function salirPeep(p, act, motivo) {
 }
 function volverPeep(p) {
   const ocupado = mapaOcupado();
-  const ruta = camino([Math.round(p.x), Math.round(p.y)], [p.desk.x, p.desk.y], new Set([...ocupado].filter((k) => k !== p.desk.x + "," + p.desk.y)));
+  // Se calcula desde el escritorio (para que valga la regla de por dónde se
+  // entra) y se recorre al revés.
+  const ida = camino([p.desk.x, p.desk.y], [Math.round(p.x), Math.round(p.y)], ocupado, salidasDe(p.desk));
+  const ruta = ida ? ida.slice().reverse() : null;
   p.modo = "volviendo"; p.ruta = ruta ? ruta.slice(1) : [[p.desk.x, p.desk.y]];
   p.el.classList.remove("llevando"); p.el.classList.add("caminando");
   if (p.motivo === "cafe-doble") { p.el.classList.add("llevando"); p.el.querySelector(".peep-mano").textContent = "☕☕"; }
