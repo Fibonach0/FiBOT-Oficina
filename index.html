@@ -1274,6 +1274,36 @@ const OFICINA_API = "https://jarvis-bot-production-31a4.up.railway.app";
 const ESTADO_CADA_MS = 60000;
 let ESTADO = null;
 
+// ---------- qué pantallas se abren (para el panel interno de FiBOT) ----------
+// Una "pantalla" es la sala que se mira, el panel de un asistente, el modo
+// diseño o la tele. Sólo viaja la ruta normalizada (sin query ni hash, ids →
+// :id); quién es lo sabe FiBOT por el token de la puerta. Falla en silencio y
+// no repite la misma pantalla dos veces seguidas. En la tele no se manda cada
+// giro de sala: se manda "/tv" una vez.
+let ultimaPantalla = "";
+function normalizarPantalla(ruta) {
+  let p = String(ruta || "").split(/[?#]/)[0];
+  p = p.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ":id")
+    .split("/").map((x) => (/\d/.test(x) ? ":id" : x)).join("/")
+    .replace(/[^\w/:.\-]/g, "").replace(/\/{2,}/g, "/");
+  if (!p.startsWith("/")) p = "/" + p;
+  return p.slice(0, 80);
+}
+function avisarPantalla(ruta) {
+  try {
+    const pantalla = normalizarPantalla(ruta);
+    if (!OFICINA_API || pantalla === ultimaPantalla) return;
+    ultimaPantalla = pantalla;
+    const s = leerSesion();
+    if (!s || !s.access_token) return;
+    fetch(OFICINA_API + "/oficina/vista", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.access_token },
+      body: JSON.stringify({ pantalla }),
+    }).catch(() => {});
+  } catch (e) { /* nunca rompe la oficina */ }
+}
+
 const ESTADOS_VIVOS = {
   en_curso: { texto: "En curso", clase: "en_curso" },
   esperando_dueno: { texto: "Esperando algo de vos", clase: "esperando_dueno" },
@@ -1433,6 +1463,7 @@ function activarSala(id) {
   seleccionId = null;
   herramientaArmada = null;
   render();
+  avisarPantalla(TV ? "/tv" : "/sala/" + LAYOUT.id);
   // Entrar al piso de payroll sin datos todavía (primer arranque, o un fetch que
   // falló): se piden y se redibuja cuando llegan.
   if (salaEsAuto(LAYOUT) && !COSTOS) cargarCostos().then((c) => { if (c) { COSTOS = c; render(); } });
@@ -2593,6 +2624,7 @@ document.querySelectorAll("[data-grilla]").forEach((b) => {
 
 document.getElementById("btn-modo").addEventListener("click", () => {
   modoDiseno = !modoDiseno;
+  avisarPantalla(modoDiseno ? "/diseno" : "/sala/" + (LAYOUT ? LAYOUT.id : ""));
   herramientaArmada = null;
   seleccionId = null;
   document.getElementById("btn-modo").textContent = modoDiseno ? "Salir del modo diseño" : "Modo diseño";
@@ -2663,6 +2695,7 @@ let panelAgenteActual = null;
 
 async function abrirPanel(agente) {
   panelAgenteActual = agente;
+  avisarPantalla("/agente/" + agente.id);
   document.getElementById("panel-avatar-wrap").innerHTML = avatarParaAgente(agente);
   document.getElementById("panel-nombre").textContent = agente.nombre;
   document.getElementById("panel-rol").textContent = agente.rol;
@@ -2747,14 +2780,20 @@ document.getElementById("btn-fibot").addEventListener("click", () => {
   if (gerente) abrirPanel(gerente);
 });
 
+// Al cerrar el panel se vuelve a la sala: se anota como pantalla otra vez.
+const volverASala = () => { if (LAYOUT) avisarPantalla(TV ? "/tv" : modoDiseno ? "/diseno" : "/sala/" + LAYOUT.id); };
 document.getElementById("cerrar").addEventListener("click", () => {
   document.getElementById("fondo-modal").classList.remove("abierto");
+  volverASala();
 });
 document.getElementById("fondo-modal").addEventListener("click", (e) => {
-  if (e.target.id === "fondo-modal") e.currentTarget.classList.remove("abierto");
+  if (e.target.id === "fondo-modal") { e.currentTarget.classList.remove("abierto"); volverASala(); }
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") document.getElementById("fondo-modal").classList.remove("abierto");
+  if (e.key === "Escape" && document.getElementById("fondo-modal").classList.contains("abierto")) {
+    document.getElementById("fondo-modal").classList.remove("abierto");
+    volverASala();
+  }
 });
 
 // ---------- arranque ----------
